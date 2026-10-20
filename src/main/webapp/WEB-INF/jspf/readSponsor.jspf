@@ -1,0 +1,10 @@
+<%
+Sponsor input = new Sponsor();
+input.setName(request.getParameter("name"));
+input.setTaxCode(request.getParameter("taxCode"));
+input.setField(request.getParameter("field"));
+input.setAddress(request.getParameter("address"));
+input.setEmail(request.getParameter("email"));
+input.setTel(request.getParameter("tel"));
+request.setAttribute("sponsorForm", input);
+%>

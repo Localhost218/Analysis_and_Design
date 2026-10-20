@@ -1,3 +1,37 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
 **/B23DCCN465 - Nguyễn Tự Kiên - Pha phân tích.vpp.**
 **/.B23DCCN465 - Nguyễn Tự Kiên - Pha phân tích.vpp.lck
 **/B23DCCN465 - Nguyễn Tự Kiên - Pha thiết kế.vpp.**
@@ -5,3 +39,7 @@
 .agent
 .claude
 
+
+# Local database credentials
+.local/
+.maven-local/

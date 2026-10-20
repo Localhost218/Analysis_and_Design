@@ -1,0 +1,14 @@
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/someoneintheinternet218/analysis_and_design}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - type: bind
+        source: ./.local/database.properties
+        target: /usr/local/tomcat/.local/database.properties
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped

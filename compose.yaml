@@ -1,0 +1,15 @@
+services:
+  app:
+    image: sponsorship:local
+    build:
+      context: .
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - type: bind
+        source: ./.local/database.properties
+        target: /usr/local/tomcat/.local/database.properties
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped
