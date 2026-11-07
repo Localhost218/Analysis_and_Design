@@ -1,0 +1,64 @@
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: f1-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-f1}
+      POSTGRES_USER: ${POSTGRES_USER:-f1}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-f1}
+      TZ: Asia/Ho_Chi_Minh
+      PGTZ: Asia/Ho_Chi_Minh
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - f1-network
+
+  backend:
+    build: ./backend
+    container_name: f1-backend
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://database:5432/${POSTGRES_DB:-f1}
+      DB_USER: ${POSTGRES_USER:-f1}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-f1}
+    ports:
+      - "8080:8080"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - f1-network
+
+  frontend:
+    build: ./frontend
+    container_name: f1-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - f1-network
+
+  cloudflare:
+    image: cloudflare/cloudflared:latest
+    container_name: f1-cloudflare
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    networks:
+      - f1-network
+
+networks:
+  f1-network:
+    name: f1-network
+    driver: bridge
