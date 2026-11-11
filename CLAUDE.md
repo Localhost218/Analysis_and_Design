@@ -145,8 +145,8 @@ Toàn bộ các luồng ngoại lệ được trích xuất từ Mục 2 ("Kịc
 ### 6. Bổ sung: Module 3 (Phương thức Trả thưởng trực tiếp - Offline)
 | Bước | Tình huống | Xử lý Frontend (`RewardPayment.jsx`) | Xử lý Backend / DB (`RewardInvoiceDAO`) | Ghi chú |
 |---|---|---|---|---|
-| **M3.1** | Chọn phương thức "Trả thưởng trực tiếp" | Dropdown chọn "Trả thưởng trực tiếp"; cho phép tích chọn mọi tay đua có tiền thưởng > 0 (không kiểm tra tài khoản ngân hàng mặc định) | Nhận `paymentMethod = "Trả thưởng trực tiếp"` | Hỗ trợ chi trả tiền mặt/trực tiếp |
-| **M3.2** | Thực hiện thanh toán trực tiếp | Gửi yêu cầu thanh toán; khi thành công hiện alert thông báo, **hoàn toàn KHÔNG mở popup hóa đơn** (`Invoice.jsx`), làm mới kết quả sang "Đã trả" | `RewardInvoiceDAO.createRewardInvoice` bỏ qua kiểm tra tài khoản nhận thưởng, lưu hóa đơn và gán `tblRewardInvoiceid` cho các kết quả thi đấu | Đúng yêu cầu: không hiện hóa đơn khi trả trực tiếp |
+| **M3.1** | Trả thưởng trực tiếp **từng tay đua** | Mỗi dòng ở bảng kết quả có nút "Trả trực tiếp" (khóa khi đã trả, thưởng 0 VNĐ hoặc tay đua đang ở bảng thanh toán online). Không gộp nhiều người: bảng thanh toán chỉ dùng cho chuyển khoản online. Không kiểm tra tài khoản ngân hàng | `RewardInvoiceDAO.createRewardInvoice` nhận `paymentMethod = "Trả thưởng trực tiếp"`, **bắt buộc đúng 1 kết quả**, nếu không ném `PaymentException` → HTTP 409 | `"Trả thưởng trực tiếp chỉ thực hiện cho từng tay đua"` |
+| **M3.2** | Xác nhận trả trực tiếp | Hộp thoại xác nhận số tiền + tên tay đua; thành công thì hiện alert, **KHÔNG mở popup hóa đơn** (`Invoice.jsx`), làm mới kết quả sang "Đã trả" | `RewardInvoiceDAO.createRewardInvoice` bỏ qua kiểm tra tài khoản nhận thưởng, lưu hóa đơn và gán `tblRewardInvoiceid` cho các kết quả thi đấu | Đúng yêu cầu: không hiện hóa đơn khi trả trực tiếp |
 
 ---
 

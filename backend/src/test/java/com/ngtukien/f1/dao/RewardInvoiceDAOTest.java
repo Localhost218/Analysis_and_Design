@@ -113,13 +113,21 @@ class RewardInvoiceDAOTest {
     }
 
     @Test
-    void payDirectRewardSuccessEvenWithoutDefaultBankAccount() {
-        // Trả thưởng trực tiếp không cần tài khoản ngân hàng mặc định (Lawson ở US và Singapore 2026)
+    void payDirectRewardRejectsMultipleDrivers() {
         RewardInvoice inv = invoiceOf(862, 838);
+        inv.setPaymentMethod("Trả thưởng trực tiếp");
+        PaymentException e = assertThrows(PaymentException.class, () -> rewardInvoiceDAO.createRewardInvoice(inv));
+        assertEquals("Trả thưởng trực tiếp chỉ thực hiện cho từng tay đua", e.getMessage());
+    }
+
+    @Test
+    void payDirectRewardSuccessEvenWithoutDefaultBankAccount() {
+        // Trả thưởng trực tiếp không cần tài khoản ngân hàng mặc định (Lawson ở US 2026, hạng 9)
+        RewardInvoice inv = invoiceOf(862);
         inv.setPaymentMethod("Trả thưởng trực tiếp");
         RewardInvoice saved = rewardInvoiceDAO.createRewardInvoice(inv);
         assertNotNull(saved.getId());
-        assertEquals(32_000_000, saved.getAmount()); // 8.000.000 + 24.000.000
+        assertEquals(8_000_000, saved.getAmount());
         assertEquals("Trả thưởng trực tiếp", saved.getPaymentMethod());
         assertEquals("Thanh toán thành công", saved.getStatus());
         assertEquals("Đã trả", em.find(RegisteredReceipt.class, 862).getPaymentStatus());

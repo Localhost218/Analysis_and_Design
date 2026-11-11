@@ -25,24 +25,21 @@ export default function RewardPayment() {
   const [stored, setInvoice] = useSession('invoice', () => emptyInvoice(METHOD_ONLINE));
   // Hóa đơn đã thanh toán (có id) hiện bằng cửa sổ Invoice; bảng thanh toán khi đó bắt đầu lại từ đầu
   const paidInvoice = stored?.id ? stored : null;
-  const invoice = paidInvoice ? emptyInvoice(stored?.paymentMethod || METHOD_ONLINE) : stored;
+  // Bảng thanh toán chỉ còn chuyển khoản online: bỏ dòng "trả trực tiếp" (không có bankAccount) của phiên bản cũ còn trong session
+  const invoice = paidInvoice ? emptyInvoice()
+    : { ...stored, paymentMethod: METHOD_ONLINE, listRegisteredReceipt: (stored?.listRegisteredReceipt || []).filter((r) => r.bankAccount) };
 
-  const [paymentMethod, setPaymentMethod] = useState(invoice.paymentMethod || METHOD_ONLINE);
   const [txtSeasonName, setTxtSeasonName] = useState(season?.name || '');
   const [txtContent, setTxtContent] = useState('');
   const [loadingDriver, setLoadingDriver] = useState(null);
   const [paying, setPaying] = useState(false);
+  const [payingDirect, setPayingDirect] = useState(null);
 
   const listRace = (season?.listRace || []).filter(isRaceEnded);
   const tblPayment = invoice.listRegisteredReceipt;
   const lblTotalAmount = tblPayment.reduce((sum, r) => sum + r.reward, 0);
   const inPayment = (id) => tblPayment.some((r) => r.id === id);
   const results = race?.listRegisteredReceipt || [];
-
-  const handleMethodChange = (newMethod) => {
-    setPaymentMethod(newMethod);
-    setInvoice((inv) => ({ ...inv, paymentMethod: newMethod }));
-  };
 
   const searchSeason = useCallback((k) => HTTPClient.fetch('GET', `/seasons?name=${encodeURIComponent(k)}`), []);
 
@@ -85,19 +82,6 @@ export default function RewardPayment() {
     }
     const driver = receipt.registeredDriver.driver;
 
-    if (paymentMethod === METHOD_DIRECT) {
-      // Trả thưởng trực tiếp: không bắt buộc tài khoản ngân hàng
-      const row = {
-        id: receipt.id,
-        reward: receipt.reward,
-        race: { id: race.id, name: race.name, season: { id: season.id, name: season.name, year: season.year } },
-        registeredDriver: receipt.registeredDriver,
-        bankAccount: null,
-      };
-      setInvoice((inv) => ({ ...inv, listRegisteredReceipt: [...inv.listRegisteredReceipt, row] }));
-      return;
-    }
-
     setLoadingDriver(receipt.id);
     try {
       const info = await HTTPClient.fetch('GET', `/drivers/${driver.id}`);
@@ -123,38 +107,46 @@ export default function RewardPayment() {
 
   const btnPay = async () => {
     if (!tblPayment.length) return;
-    const isDirect = paymentMethod === METHOD_DIRECT;
-    const confirmMsg = isDirect
-      ? `Xác nhận trả thưởng trực tiếp ${formatMoney(lblTotalAmount)} cho ${tblPayment.length} khoản thưởng của các tay đua?`
-      : `Thanh toán ${formatMoney(lblTotalAmount)} cho ${tblPayment.length} khoản thưởng qua ${paymentMethod.toLowerCase()}?`;
-
-    if (!await dialog.confirm(confirmMsg, {
-      title: 'Bạn xác nhận thanh toán?',
-      confirmText: isDirect ? 'Xác nhận trả thưởng' : 'Thanh toán'
-    })) return;
+    if (!await dialog.confirm(`Thanh toán ${formatMoney(lblTotalAmount)} cho ${tblPayment.length} khoản thưởng qua ${METHOD_ONLINE.toLowerCase()}?`,
+      { title: 'Bạn xác nhận thanh toán?', confirmText: 'Thanh toán' })) return;
 
     setPaying(true);
     try {
       const saved = await HTTPClient.fetch('POST', '/invoices', {
         organizer: { id: organizer.id },
-        paymentMethod: paymentMethod,
+        paymentMethod: METHOD_ONLINE,
         listRegisteredReceipt: tblPayment.map((r) => ({ id: r.id })),
       });
 
-      if (isDirect) {
-        // Trả thưởng trực tiếp: không cần hiện hóa đơn
-        await dialog.alert(`Đã xác nhận trả thưởng trực tiếp thành công ${formatMoney(lblTotalAmount)} cho ${tblPayment.length} khoản thưởng.`, { type: 'success', title: 'Trả thưởng thành công' });
-        setInvoice(emptyInvoice(METHOD_DIRECT));
-      } else {
-        await dialog.alert(`Hóa đơn ${saved.barcode} đã được lập và gửi đến email của từng tay đua.`, { type: 'success', title: 'Thanh toán thành công' });
-        setInvoice(saved); // Hiện cửa sổ Invoice
-      }
+      await dialog.alert(`Hóa đơn ${saved.barcode} đã được lập và gửi đến email của từng tay đua.`, { type: 'success', title: 'Thanh toán thành công' });
+      setInvoice(saved); // Hiện cửa sổ Invoice
       // Nạp lại kết quả chặng đang xem để cập nhật trạng thái "Đã trả"
       if (race?.id) selectRace(race.id);
     } catch (e) {
       await dialog.alert(`${e.message}\n\nBấm "Thanh toán" để thử lại hoặc "Hủy" để kết thúc.`, { type: 'error', title: 'Thanh toán không thành công' });
     } finally {
       setPaying(false);
+    }
+  };
+
+  const payDirect = async (receipt) => {
+    const driver = receipt.registeredDriver.driver;
+    if (!await dialog.confirm(`Trả thưởng trực tiếp ${formatMoney(receipt.reward)} cho ${driver.fullName} (${race.name})?`,
+      { title: 'Xác nhận trả thưởng trực tiếp', confirmText: 'Xác nhận trả thưởng' })) return;
+    setPayingDirect(receipt.id);
+    try {
+      await HTTPClient.fetch('POST', '/invoices', {
+        organizer: { id: organizer.id },
+        paymentMethod: METHOD_DIRECT,
+        listRegisteredReceipt: [{ id: receipt.id }],
+      });
+      await dialog.alert(`Đã trả thưởng trực tiếp ${formatMoney(receipt.reward)} cho ${driver.fullName}.`, { type: 'success', title: 'Trả thưởng thành công' });
+      setInvoice((inv) => ({ ...inv, listRegisteredReceipt: inv.listRegisteredReceipt.filter((r) => r.id !== receipt.id) }));
+      selectRace(race.id);
+    } catch (e) {
+      await dialog.alert(e.message, { type: 'error', title: 'Trả thưởng không thành công' });
+    } finally {
+      setPayingDirect(null);
     }
   };
 
@@ -209,12 +201,12 @@ export default function RewardPayment() {
               <tr>
                 <th className="tt">TT</th><th>Số xe</th><th>Tay đua</th><th>Hạng</th><th className="num">Vòng</th>
                 <th className="num">Thời gian</th><th className="num">Điểm</th><th className="num">Hệ số</th>
-                <th className="num">Tiền thưởng</th><th>Trạng thái</th><th className="center">Chọn</th>
+                <th className="num">Tiền thưởng</th><th>Trạng thái</th><th className="center">Chọn</th><th className="center">Trả trực tiếp</th>
               </tr>
             </thead>
             <tbody>
               {results.length === 0 && (
-                <tr><td colSpan={11}><EmptyState icon="flag" title="Chưa có dữ liệu">Chọn mùa giải và chặng đua để xem kết quả</EmptyState></td></tr>
+                <tr><td colSpan={12}><EmptyState icon="flag" title="Chưa có dữ liệu">Chọn mùa giải và chặng đua để xem kết quả</EmptyState></td></tr>
               )}
               {results.map((r, i) => {
                 const paid = r.paymentStatus === 'Đã trả';
@@ -241,6 +233,13 @@ export default function RewardPayment() {
                         checked={checked}
                         onChange={(e) => toggleReceipt(r, e.target.checked)} />
                     </td>
+                    <td className="center">
+                      <button type="button" className="btn btn-sm" disabled={locked || checked || payingDirect !== null}
+                        title={checked ? 'Tay đua đang ở bảng thanh toán online' : undefined}
+                        onClick={() => payDirect(r)}>
+                        <Icon name="wallet" size={14} />{payingDirect === r.id ? 'Đang trả...' : 'Trả trực tiếp'}
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -250,30 +249,9 @@ export default function RewardPayment() {
       </section>
 
       <section className="card">
-        <div className="card-head" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <h2><span className="step">3</span>Bảng thanh toán</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Hình thức:</span>
-            <div style={{ display: 'inline-flex', borderRadius: 8, background: '#f0f2f5', padding: 3, gap: 4 }}>
-              <button
-                type="button"
-                className={`btn btn-sm ${paymentMethod === METHOD_ONLINE ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ borderRadius: 6, fontSize: 12, padding: '4px 10px' }}
-                onClick={() => handleMethodChange(METHOD_ONLINE)}
-              >
-                <Icon name="bank" size={13} /> {METHOD_ONLINE}
-              </button>
-              <button
-                type="button"
-                className={`btn btn-sm ${paymentMethod === METHOD_DIRECT ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ borderRadius: 6, fontSize: 12, padding: '4px 10px' }}
-                onClick={() => handleMethodChange(METHOD_DIRECT)}
-              >
-                <Icon name="wallet" size={13} /> {METHOD_DIRECT}
-              </button>
-            </div>
-            <span className="count">{tblPayment.length} khoản</span>
-          </div>
+        <div className="card-head">
+          <h2><span className="step">3</span>Bảng thanh toán (chuyển khoản online)</h2>
+          <span className="count">{tblPayment.length} khoản</span>
         </div>
         <div className="card-body flush table-wrap">
           <table id="tblPayment">
@@ -282,7 +260,7 @@ export default function RewardPayment() {
                 <th className="tt">TT</th>
                 <th>Mùa giải – Chặng</th>
                 <th>Tay đua</th>
-                <th>Hình thức / Ngân hàng</th>
+                <th>Ngân hàng</th>
                 <th>Chủ tài khoản</th>
                 <th>Số tài khoản</th>
                 <th className="num">Tiền thưởng</th>
@@ -298,9 +276,9 @@ export default function RewardPayment() {
                   <td className="tt">{i + 1}</td>
                   <td><span className="chip">{seasonRaceLabel(r.race)}</span></td>
                   <td className="cell-title nowrap">{r.registeredDriver.driver.fullName} <span className="racing-no">#{r.registeredDriver.driver.racingNumber}</span></td>
-                  <td>{r.bankAccount ? r.bankAccount.bank.name : <span className="chip chip-success">Trả thưởng trực tiếp</span>}</td>
-                  <td>{r.bankAccount ? r.bankAccount.accountHolder : 'Trao giải trực tiếp'}</td>
-                  <td className="mono">{r.bankAccount ? r.bankAccount.accountNumber : '—'}</td>
+                  <td>{r.bankAccount.bank.name}</td>
+                  <td>{r.bankAccount.accountHolder}</td>
+                  <td className="mono">{r.bankAccount.accountNumber}</td>
                   <td className="num cell-title">{formatMoney(r.reward)}</td>
                   <td className="num"><button type="button" className="btn-link" onClick={() => toggleReceipt(r, false)}><Icon name="trash" size={16} />Bỏ</button></td>
                 </tr>
@@ -316,7 +294,7 @@ export default function RewardPayment() {
           <b id="lblTotalAmount">{formatMoney(lblTotalAmount)}</b>
         </div>
         <dl className="checkout-meta">
-          <div><dt>Phương thức</dt><dd><b>{paymentMethod}</b></dd></div>
+          <div><dt>Phương thức</dt><dd><b>{METHOD_ONLINE}</b></dd></div>
           <div><dt>Người thực hiện</dt><dd>{organizer?.fullName}</dd></div>
         </dl>
         <div className="checkout-content">
@@ -327,14 +305,14 @@ export default function RewardPayment() {
         <div className="checkout-actions">
           <button id="btnCancel" type="button" className="btn" onClick={btnCancel}>Hủy</button>
           <button id="btnPay" type="button" className="btn btn-primary btn-lg" onClick={btnPay} disabled={!tblPayment.length || paying}>
-            <Icon name="wallet" />{paying ? 'Đang xử lý...' : (paymentMethod === METHOD_DIRECT ? 'Xác nhận trả thưởng' : 'Thanh toán online')}
+            <Icon name="wallet" />{paying ? 'Đang xử lý...' : 'Thanh toán online'}
           </button>
         </div>
       </div>
       {paidInvoice && (
         <Invoice
           invoice={paidInvoice}
-          onClose={() => setInvoice(emptyInvoice(paymentMethod))}
+          onClose={() => setInvoice(emptyInvoice())}
           onBack={() => {
             session.remove('invoice', 'season', 'race');
             navigate('/');

@@ -271,7 +271,6 @@ Mục **"Bảng thanh toán"**:
 |---|---|---|
 | tblPayment | table | TT, Mùa giải – Chặng ("2025 – C03"), Tay đua ("Lando Norris (#1)"), Ngân hàng, Chủ tài khoản, Số tài khoản, Tiền thưởng |
 | lblTotalAmount | label | Tổng tiền: 172.000.000 VNĐ |
-| selectPaymentMethod | select | Phương thức thanh toán: `Chuyển khoản online` (mặc định) / `Trả thưởng trực tiếp` (Module 3) |
 | txtContent | input | Nội dung: |
 | btnPay | button | Thanh toán (disabled khi tblPayment rỗng) |
 | btnCancel | Link | Hủy |
@@ -284,17 +283,17 @@ Hành vi:
 3. **Chọn chặng**: lưu `race`, gọi `GET /api/races/{id}`, hiện `tblResult`.
    - Chặng chưa có kết quả hoặc basePrize chưa có: alert "Chặng đua còn thiếu dữ liệu kết quả hoặc mức thưởng cơ sở", không hiện bảng.
    - Checkbox **bị khóa** khi kết quả `Đã trả` hoặc tiền thưởng = 0.
+   - Cột cuối **"Trả trực tiếp"** (Module 3): nút trên từng dòng, khóa khi `Đã trả`, thưởng 0 hoặc tay đua đang ở tblPayment.
    - Kết quả đã nằm trong tblPayment thì checkbox hiện tích sẵn.
 4. **Tích một tay đua**:
-   - Nếu `paymentMethod = "Chuyển khoản online"`: gọi `GET /api/drivers/{driverId}`, lấy tài khoản `isDefault = true` còn hoạt động, thêm một dòng vào `tblPayment`, cập nhật `lblTotalAmount`. Nếu không có tài khoản mặc định: alert "Thiếu thông tin nhận thưởng: <tên tay đua>" và bỏ tích.
-   - Nếu `paymentMethod = "Trả thưởng trực tiếp"` (Module 3): cho phép chọn mọi tay đua có tiền thưởng > 0 (kể cả chưa có tài khoản ngân hàng, thông tin tài khoản ghi "Tiền mặt / Trực tiếp").
+   - Gọi `GET /api/drivers/{driverId}`, lấy tài khoản `isDefault = true` còn hoạt động, thêm một dòng vào `tblPayment`, cập nhật `lblTotalAmount`. Nếu không có tài khoản mặc định: alert "Thiếu thông tin nhận thưởng: <tên tay đua>" và bỏ tích.
    - **Bỏ tích**: xóa dòng đó khỏi tblPayment, cập nhật tổng tiền.
 5. **Đổi sang mùa giải hoặc chặng khác**: `tblPayment` **giữ nguyên**, nên có thể trả nhiều chặng, nhiều mùa trong một hóa đơn.
-6. **Click Thanh toán**: `confirm("Bạn xác nhận thanh toán?")`, đồng ý thì gọi `POST /api/invoices` với organizer, `paymentMethod` đã chọn và các id trong tblPayment.
-   - **Nếu Chuyển khoản online**: alert "Thanh toán thành công". Click OK thì lưu `invoice` vào session → **mở cửa sổ nổi Invoice** (không đổi URL); bảng kết quả chặng đang xem được nạp lại để hiện "Đã trả".
-   - **Nếu Trả thưởng trực tiếp (Module 3)**: alert "Thanh toán thành công qua hình thức Trả thưởng trực tiếp!". Click OK thì **KHÔNG mở cửa sổ Invoice**, làm sạch bảng thanh toán, làm mới bảng kết quả để hiện "Đã trả".
+6. **Click Thanh toán**: `confirm("Bạn xác nhận thanh toán?")`, đồng ý thì gọi `POST /api/invoices` với organizer, `paymentMethod = "Chuyển khoản online"` và các id trong tblPayment (bảng thanh toán chỉ dùng cho chuyển khoản online).
+   - Thành công: alert "Thanh toán thành công". Click OK thì lưu `invoice` vào session → **mở cửa sổ nổi Invoice** (không đổi URL); bảng kết quả chặng đang xem được nạp lại để hiện "Đã trả".
    - Thất bại: alert "Thanh toán không thành công: <message>", mọi kết quả giữ `Chưa trả`, bảng thanh toán giữ nguyên để bấm Thanh toán lại ("Thử lại").
-7. **Click Hủy**: xóa `invoice`, `season`, `race` khỏi session rồi về `/`.
+7. **Bấm "Trả trực tiếp" trên một dòng** (Module 3, **từng tay đua, không gộp**): confirm số tiền + tên tay đua → `POST /api/invoices` với `paymentMethod = "Trả thưởng trực tiếp"` và **đúng 1** id (không cần tài khoản ngân hàng). Thành công: alert "Trả thưởng thành công", **KHÔNG mở cửa sổ Invoice**, nạp lại bảng kết quả để hiện "Đã trả"; bảng thanh toán online giữ nguyên.
+8. **Click Hủy**: xóa `invoice`, `season`, `race` khỏi session rồi về `/`.
 
 ### Invoice.jsx — **modal trên `/rewards/payment` và `/driver-portal`** — tiêu đề "Hóa đơn trả thưởng"
 Thông tin (dl):

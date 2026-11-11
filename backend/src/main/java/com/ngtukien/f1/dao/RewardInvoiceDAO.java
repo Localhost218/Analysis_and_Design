@@ -43,6 +43,9 @@ public class RewardInvoiceDAO extends DAO {
             paymentMethod = DEFAULT_METHOD;
         }
         boolean isDirect = DIRECT_METHOD.equalsIgnoreCase(paymentMethod.trim());
+        if (isDirect && invoice.getListRegisteredReceipt().size() != 1) {
+            throw new PaymentException("Trả thưởng trực tiếp chỉ thực hiện cho từng tay đua");
+        }
 
         List<RegisteredReceipt> receipts = new ArrayList<>();
         Set<Integer> ids = new HashSet<>();
