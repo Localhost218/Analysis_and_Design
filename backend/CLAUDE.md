@@ -18,7 +18,7 @@
 ## Lệnh
 ```bash
 ./mvnw spring-boot:run   # chạy, cổng 8080 (cần container database đang chạy)
-./mvnw test              # 28 test, cần container database đang chạy
+./mvnw test              # 33 test, cần container database đang chạy
 ./mvnw package           # build target/app.jar
 ```
 Docker: `Dockerfile` build bằng maven:3.9.9-eclipse-temurin-21 (`-DskipTests`, vì test cần DB) rồi chạy bằng eclipse-temurin:21-jre-alpine với `-Duser.timezone=Asia/Ho_Chi_Minh`.
@@ -223,7 +223,8 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 | POST | /api/invoices | `{organizer:{id}, paymentMethod, listRegisteredReceipt:[{id}, ...]}` | RewardInvoiceDAO.createRewardInvoice | 409 "Thanh toán không thành công: <lý do>" (vd: "Thiếu thông tin nhận thưởng: Lê Minh Cường") |
 
 - Thành công: trả entity/list trực tiếp (POST tạo mới trả 201 kèm bản ghi có id). Lỗi: `{ "message": "<tiếng Việt>" }`.
-- Hợp đồng hợp lệ khi: có sponsor và season, value > 0, effectiveFrom < effectiveTo, có cả hai người đại diện.
+- Hợp đồng hợp lệ khi: có sponsor đang hợp tác (`status = 'Đang hợp tác'`), season, organizer, `value > 0`, `effectiveFrom < effectiveTo`, có cả hai người đại diện, có ít nhất một điều khoản (`listContractTerm` không rỗng), có ít nhất một quyền lợi (`listContractBenefit` không rỗng), không trùng lặp điều khoản hay quyền lợi.
+- Xem chi tiết bảng ma trận kịch bản ngoại lệ đầy đủ tại `CLAUDE.md` ở thư mục gốc.
 
 ## Dữ liệu mẫu (`data.sql`)
 - Organizer `a` / `a@123` (Nguyễn Văn A) và `b` / `b@123` (Nguyễn Thị B)

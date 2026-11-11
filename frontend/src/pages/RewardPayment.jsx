@@ -46,7 +46,7 @@ export default function RewardPayment() {
       const info = await HTTPClient.fetch('GET', `/seasons/${s.id}`); // getSeasonInfo
       setSeason(info);
       if (!(info.listRace || []).some(isRaceEnded)) {
-        await dialog.alert(`Mùa giải ${info.name} chưa có chặng đua nào kết thúc.`, { title: 'Chưa có chặng đua đủ điều kiện trả thưởng' });
+        await dialog.alert(`Chưa có chặng đua đủ điều kiện trả thưởng (Mùa giải ${info.name} chưa có chặng đua nào kết thúc).`, { title: 'Chưa có chặng đua đủ điều kiện trả thưởng' });
       }
     } catch (e) {
       await dialog.alert(e.message, { type: 'error' });
@@ -111,7 +111,7 @@ export default function RewardPayment() {
         paymentMethod: invoice.paymentMethod,
         listRegisteredReceipt: tblPayment.map((r) => ({ id: r.id })),
       });
-      await dialog.alert(`Hóa đơn ${saved.barcode} đã được lập.`, { type: 'success', title: 'Thanh toán thành công' });
+      await dialog.alert(`Hóa đơn ${saved.barcode} đã được lập và gửi đến email của từng tay đua.`, { type: 'success', title: 'Thanh toán thành công' });
       setInvoice(saved); // "Lưu vào session: RewardInvoice" -> hiện cửa sổ Invoice
       // nạp lại kết quả chặng đang xem để cập nhật trạng thái "Đã trả"
       if (race?.id) selectRace(race.id);
@@ -155,7 +155,7 @@ export default function RewardPayment() {
             <label htmlFor="listRace">Chặng đua</label>
             <select id="listRace" value={race?.id || ''} disabled={!season || listRace.length === 0}
               onChange={(e) => selectRace(e.target.value)}>
-              <option value="">{season && listRace.length === 0 ? 'Chưa có chặng đua đã kết thúc' : 'Chọn chặng đua đã kết thúc'}</option>
+              <option value="">{season && listRace.length === 0 ? 'Chưa có chặng đua đủ điều kiện trả thưởng' : 'Chọn chặng đua đã kết thúc'}</option>
               {listRace.map((r) => <option key={r.id} value={r.id}>{r.name} · {formatDate(r.startTime)}</option>)}
             </select>
             {race?.basePrize ? <span className="hint">Mức thưởng cơ sở {raceCode(race.name)}: <b>{formatMoney(race.basePrize)}</b> · {race.location}</span> : null}

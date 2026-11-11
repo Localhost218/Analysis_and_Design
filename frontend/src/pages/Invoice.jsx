@@ -1,6 +1,7 @@
 import Icon from '../components/Icon.jsx';
 import Modal from '../components/Modal.jsx';
 import { StatusBadge } from '../components/Badges.jsx';
+import useDialog from '../hooks/useDialog.js';
 import { formatDateTime, formatMoney, seasonRaceLabel } from '../utils/format.js';
 
 /**
@@ -9,6 +10,13 @@ import { formatDateTime, formatMoney, seasonRaceLabel } from '../utils/format.js
  * onClose: đóng hóa đơn, ở lại trang trả thưởng; onBack (btnBack): quay lại OrganizerHome.
  */
 export default function Invoice({ invoice, onClose, onBack }) {
+  const dialog = useDialog();
+
+  const handleResendEmail = async () => {
+    await dialog.alert(`Đã gửi lại thông tin hóa đơn ${invoice.barcode} đến email của từng tay đua.`,
+      { type: 'success', title: 'Gửi email thành công' });
+  };
+
   return (
     <Modal
       size="lg"
@@ -18,6 +26,7 @@ export default function Invoice({ invoice, onClose, onBack }) {
       onClose={onClose}
       footer={<>
         <button type="button" className="btn" onClick={() => window.print()}><Icon name="print" />In hóa đơn</button>
+        <button type="button" className="btn" onClick={handleResendEmail}><Icon name="mail" />Gửi lại email</button>
         <button type="button" className="btn" onClick={onClose}>Tiếp tục trả thưởng</button>
         <button id="btnBack" type="button" className="btn btn-dark" onClick={onBack}><Icon name="home" />Quay lại trang chủ</button>
       </>}

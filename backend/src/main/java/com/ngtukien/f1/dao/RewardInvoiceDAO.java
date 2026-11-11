@@ -79,7 +79,6 @@ public class RewardInvoiceDAO extends DAO {
         invoice.setBarcode(String.format("HD%03d", invoice.getId()));
         for (RegisteredReceipt r : receipts) {
             r.setRewardInvoice(invoice);
-            r.setOrganizer(organizer);
         }
         return invoice;
     }

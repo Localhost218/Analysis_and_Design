@@ -164,44 +164,44 @@ ON CONFLICT DO NOTHING;
 -- ===== Kết quả thi đấu =====
 -- reward của kết quả chưa trả được RaceDAO.getRaceInfo() tính lại theo hệ số xếp hạng
 INSERT INTO tblRegisteredReceipt (id, rank, score, finishedTime, completedLap, reward, completedStatus, tblRaceid, tblRegisteredDriverid, tblOrganizerMemberid, tblRewardInvoiceid) VALUES
- -- C03 – Australian 2025 (Chặng điển hình: có kết quả chưa trả, đã trả, bỏ cuộc)
- (1, 1, 25, '2025-04-05 14:32:00', 58, 0, 'Hoàn thành', 3, 1, NULL, NULL),
- (2, 2, 18, '2025-04-05 14:32:05', 58, 0, 'Hoàn thành', 3, 2, NULL, NULL),
- (3, 3, 15, '2025-04-05 14:32:11', 58, 60000000, 'Hoàn thành', 3, 3, 2, 1),
- (4, 4, 12, '2025-04-05 14:32:20', 58, 0, 'Hoàn thành', 3, 4, NULL, NULL),
- (5, 5, 10, '2025-04-05 14:32:32', 58, 0, 'Hoàn thành', 3, 5, NULL, NULL),
- (6, 6, 8, '2025-04-05 14:32:40', 58, 0, 'Hoàn thành', 3, 6, NULL, NULL),
- (7, 7, 6, '2025-04-05 14:32:55', 58, 0, 'Hoàn thành', 3, 9, NULL, NULL),
- (8, 8, 4, '2025-04-05 14:33:10', 57, 0, 'Hoàn thành', 3, 8, NULL, NULL),
- (9, NULL, 0, NULL, 30, 0, 'Bỏ cuộc', 3, 7, NULL, NULL),
+ -- C03 – Australian 2025 (Do BTC Nguyễn Văn A - id 1 đưa vào hệ thống; có kết quả chưa trả, đã trả, bỏ cuộc)
+ (1, 1, 25, '2025-04-05 14:32:00', 58, 0, 'Hoàn thành', 3, 1, 1, NULL),
+ (2, 2, 18, '2025-04-05 14:32:05', 58, 0, 'Hoàn thành', 3, 2, 1, NULL),
+ (3, 3, 15, '2025-04-05 14:32:11', 58, 60000000, 'Hoàn thành', 3, 3, 1, 1),
+ (4, 4, 12, '2025-04-05 14:32:20', 58, 0, 'Hoàn thành', 3, 4, 1, NULL),
+ (5, 5, 10, '2025-04-05 14:32:32', 58, 0, 'Hoàn thành', 3, 5, 1, NULL),
+ (6, 6, 8, '2025-04-05 14:32:40', 58, 0, 'Hoàn thành', 3, 6, 1, NULL),
+ (7, 7, 6, '2025-04-05 14:32:55', 58, 0, 'Hoàn thành', 3, 9, 1, NULL),
+ (8, 8, 4, '2025-04-05 14:33:10', 57, 0, 'Hoàn thành', 3, 8, 1, NULL),
+ (9, NULL, 0, NULL, 30, 0, 'Bỏ cuộc', 3, 7, 1, NULL),
 
- -- C24 – Abu Dhabi 2024 (Chặng có tai nạn)
- (10, 1, 25, '2024-12-08 18:30:00', 58, 0, 'Hoàn thành', 4, 3, NULL, NULL),
- (11, 2, 18, '2024-12-08 18:30:10', 58, 0, 'Hoàn thành', 4, 4, NULL, NULL),
- (12, 3, 15, '2024-12-08 18:30:20', 58, 0, 'Hoàn thành', 4, 5, NULL, NULL),
- (13, 4, 12, '2024-12-08 18:30:30', 58, 0, 'Hoàn thành', 4, 7, NULL, NULL),
- (14, NULL, 0, NULL, 12, 0, 'Tai nạn', 4, 6, NULL, NULL),
+ -- C24 – Abu Dhabi 2024 (Do BTC Nguyễn Văn A - id 1 đưa vào hệ thống; chặng có tai nạn)
+ (10, 1, 25, '2024-12-08 18:30:00', 58, 0, 'Hoàn thành', 4, 3, 1, NULL),
+ (11, 2, 18, '2024-12-08 18:30:10', 58, 0, 'Hoàn thành', 4, 4, 1, NULL),
+ (12, 3, 15, '2024-12-08 18:30:20', 58, 0, 'Hoàn thành', 4, 5, 1, NULL),
+ (13, 4, 12, '2024-12-08 18:30:30', 58, 0, 'Hoàn thành', 4, 7, 1, NULL),
+ (14, NULL, 0, NULL, 12, 0, 'Tai nạn', 4, 6, 1, NULL),
 
- -- C01 – Bahrain 2025: Leclerc và Norris đồng hạng 2; Russell không xuất phát
- (15, 1, 25, '2025-03-09 16:33:20', 57, 0, 'Hoàn thành', 1, 3, NULL, NULL),
- (16, 2, 18, '2025-03-09 16:33:30', 57, 0, 'Hoàn thành', 1, 5, NULL, NULL),
- (17, 2, 18, '2025-03-09 16:33:30', 57, 0, 'Hoàn thành', 1, 4, NULL, NULL),
- (18, 4, 12, '2025-03-09 16:33:50', 57, 0, 'Hoàn thành', 1, 6, NULL, NULL),
- (19, NULL, 0, NULL, 0, 0, 'Không xuất phát', 1, 9, NULL, NULL),
+ -- C01 – Bahrain 2025 (Do BTC Nguyễn Thị B - id 2 đưa vào hệ thống; Leclerc và Norris đồng hạng 2; Russell không xuất phát)
+ (15, 1, 25, '2025-03-09 16:33:20', 57, 0, 'Hoàn thành', 1, 3, 2, NULL),
+ (16, 2, 18, '2025-03-09 16:33:30', 57, 0, 'Hoàn thành', 1, 5, 2, NULL),
+ (17, 2, 18, '2025-03-09 16:33:30', 57, 0, 'Hoàn thành', 1, 4, 2, NULL),
+ (18, 4, 12, '2025-03-09 16:33:50', 57, 0, 'Hoàn thành', 1, 6, 2, NULL),
+ (19, NULL, 0, NULL, 0, 0, 'Không xuất phát', 1, 9, 2, NULL),
 
- -- C01 – Bahrain 2026: Đã có kết quả chặng mở màn 2026, chưa chi trả
- (20, 1, 25, '2026-03-08 16:31:00', 57, 0, 'Hoàn thành', 5, 4, NULL, NULL),
- (21, 2, 18, '2026-03-08 16:31:04', 57, 0, 'Hoàn thành', 5, 7, NULL, NULL),
- (22, 3, 15, '2026-03-08 16:31:15', 57, 0, 'Hoàn thành', 5, 1, NULL, NULL),
- (23, 4, 12, '2026-03-08 16:31:22', 57, 0, 'Hoàn thành', 5, 2, NULL, NULL),
+ -- C01 – Bahrain 2026 (Do BTC Nguyễn Thị B - id 2 đưa vào hệ thống; đã có kết quả chặng mở màn 2026, chưa chi trả)
+ (20, 1, 25, '2026-03-08 16:31:00', 57, 0, 'Hoàn thành', 5, 4, 2, NULL),
+ (21, 2, 18, '2026-03-08 16:31:04', 57, 0, 'Hoàn thành', 5, 7, 2, NULL),
+ (22, 3, 15, '2026-03-08 16:31:15', 57, 0, 'Hoàn thành', 5, 1, 2, NULL),
+ (23, 4, 12, '2026-03-08 16:31:22', 57, 0, 'Hoàn thành', 5, 2, 2, NULL),
 
- -- C24 – Abu Dhabi 2026: TÌNH HUỐNG chặng đua ĐÃ ĐƯỢC THANH TOÁN THƯỞNG TOÀN BỘ (hóa đơn HD002)
+ -- C24 – Abu Dhabi 2026 (Do BTC Nguyễn Văn A - id 1 đưa vào hệ thống; đã được chi trả qua hóa đơn HD002)
  -- Tay đua hạng 11 ngoài top có thưởng (reward = 0) và tay đua bỏ cuộc
  (24, 1, 25, '2026-12-06 18:35:10', 58, 120000000, 'Hoàn thành', 6, 4, 1, 2),
  (25, 2, 18, '2026-12-06 18:35:22', 58, 86400000, 'Hoàn thành', 6, 5, 1, 2),
  (26, 3, 15, '2026-12-06 18:35:35', 58, 72000000, 'Hoàn thành', 6, 3, 1, 2),
- (27, 11, 0, '2026-12-06 18:37:00', 57, 0, 'Hoàn thành', 6, 11, NULL, NULL),
- (28, NULL, 0, NULL, 22, 0, 'Bỏ cuộc', 6, 10, NULL, NULL)
+ (27, 11, 0, '2026-12-06 18:37:00', 57, 0, 'Hoàn thành', 6, 11, 1, NULL),
+ (28, NULL, 0, NULL, 22, 0, 'Bỏ cuộc', 6, 10, 1, NULL)
 ON CONFLICT DO NOTHING;
 
 -- ===== Điều khoản & quyền lợi =====

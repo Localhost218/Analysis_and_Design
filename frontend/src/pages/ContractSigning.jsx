@@ -23,6 +23,7 @@ export default function ContractSigning() {
   const [txtSeasonName, setTxtSeasonName] = useState(contract.season?.name || '');
   const [txtTermTitle, setTxtTermTitle] = useState('');
   const [txtBenefitTitle, setTxtBenefitTitle] = useState('');
+  const [sidecarOpen, setSidecarOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   // NewSponsor / NewSeason / NewTerm / NewBenefit hiện dạng cửa sổ nổi, không có route riêng
   const [openForm, setOpenForm] = useState(null);
@@ -163,15 +164,31 @@ export default function ContractSigning() {
   };
 
   return (
-    <main className="main">
+    <main className="main wide">
       <div className="no-print">
         <PageHeader
           crumbs={[{ label: 'Trang chủ', to: '/' }, { label: 'Ký hợp đồng tài trợ' }]}
           title={<>Ký hợp đồng tài trợ <StatusBadge status={contract.status} />{contract.barcode && <span className="chip">{contract.barcode}</span>}</>}
           subtitle={saved ? 'Hợp đồng đã lưu, nội dung không thể chỉnh sửa.' : 'Điền thông tin đã thỏa thuận với nhà tài trợ, sau đó lưu và in hợp đồng.'}
+          actions={
+            <div className="field-row" style={{ gap: 8 }}>
+              <button
+                type="button"
+                className={`btn ${sidecarOpen ? 'btn-ghost' : 'btn-primary'}`}
+                onClick={() => setSidecarOpen((v) => !v)}
+                title={sidecarOpen ? 'Thu gọn tóm tắt hợp đồng' : 'Mở tóm tắt hợp đồng'}
+              >
+                <Icon name="contract" />
+                {sidecarOpen ? 'Thu gọn tóm tắt' : 'Tóm tắt hợp đồng'}
+              </button>
+              <button id="btnCancelHeader" type="button" className="btn btn-ghost" onClick={btnCancel}>
+                <Icon name="back" />Quay lại
+              </button>
+            </div>
+          }
         />
 
-        <div className="layout-aside">
+        <div className={`layout-aside ${sidecarOpen ? '' : 'collapsed'}`}>
           <div>
             <section className="card">
               <div className="card-head"><h2><span className="step">1</span>Thông tin chung</h2></div>
@@ -262,16 +279,26 @@ export default function ContractSigning() {
               </div>
               <div className="card-body flush table-wrap">
                 <table id="tblContractTerm">
-                  <thead><tr><th className="tt">TT</th><th>Tiêu đề</th><th>Nội dung</th><th>Ghi chú</th><th /></tr></thead>
+                  <thead>
+                    <tr>
+                      <th className="tt">TT</th>
+                      <th style={{ minWidth: 160 }}>Tiêu đề</th>
+                      <th style={{ minWidth: 240 }}>Nội dung</th>
+                      <th style={{ minWidth: 200 }}>Xử lý vi phạm</th>
+                      <th style={{ minWidth: 200 }}>Ghi chú</th>
+                      <th />
+                    </tr>
+                  </thead>
                   <tbody>
                     {contract.listContractTerm.length === 0 && (
-                      <tr><td colSpan={5}><EmptyState icon="contract">Chưa có điều khoản — tìm và chọn ở ô phía trên</EmptyState></td></tr>
+                      <tr><td colSpan={6}><EmptyState icon="contract">Chưa có điều khoản — tìm và chọn ở ô phía trên</EmptyState></td></tr>
                     )}
                     {contract.listContractTerm.map((ct, i) => (
                       <tr key={ct.term.id}>
                         <td className="tt">{i + 1}</td>
                         <td className="cell-title">{ct.term.title}</td>
                         <td className="cell-sub">{ct.term.details}</td>
+                        <td className="cell-sub">{ct.term.punishment || '—'}</td>
                         <td style={{ minWidth: 220 }}><input value={ct.notes || ''} placeholder="Ghi chú áp dụng riêng" disabled={locked}
                           onChange={(e) => updateRow('listContractTerm', i, 'notes', e.target.value)} /></td>
                         <td className="num"><button type="button" className="btn-link" disabled={locked}
@@ -328,36 +355,63 @@ export default function ContractSigning() {
             </section>
           </div>
 
-          <aside className="aside">
-            <section className="card">
-              <div className="card-head"><h2>Tóm tắt hợp đồng</h2></div>
-              <div className="card-body">
-                <div className="total-box">
-                  <small>Giá trị hợp đồng</small>
-                  <b>{contract.value ? formatMoney(contract.value) : '—'}</b>
-                </div>
-                <dl className="summary">
-                  <div><dt>Nhà tài trợ</dt><dd>{contract.sponsor?.name || '—'}</dd></div>
-                  <div><dt>Mùa giải</dt><dd>{contract.season?.name || '—'}</dd></div>
-                  <div><dt>Hiệu lực</dt><dd>{contract.effectiveFrom && contract.effectiveTo ? `${formatDate(contract.effectiveFrom)} – ${formatDate(contract.effectiveTo)}` : '—'}</dd></div>
-                  <div><dt>Điều khoản / quyền lợi</dt><dd>{contract.listContractTerm.length} / {contract.listContractBenefit.length}</dd></div>
-                  {contract.signedDate && <div><dt>Ngày ký</dt><dd>{formatDate(contract.signedDate)}</dd></div>}
-                </dl>
-                <div className="stack" style={{ marginTop: 18 }}>
-                  <button id="btnSave" type="button" className="btn btn-primary btn-lg" onClick={btnSave} disabled={saved || busy}>
-                    <Icon name="print" />Lưu và in hợp đồng
+          {sidecarOpen && (
+            <aside className="aside">
+              <section className="card">
+                <div className="card-head aside-head">
+                  <h2>Tóm tắt hợp đồng</h2>
+                  <button
+                    type="button"
+                    className="aside-toggle-btn"
+                    onClick={() => setSidecarOpen(false)}
+                    title="Thu gọn tóm tắt để mở rộng nội dung"
+                  >
+                    <Icon name="x" size={15} />
+                    <span>Thu gọn</span>
                   </button>
-                  <button id="btnConfirmSigned" type="button" className="btn btn-success btn-lg" onClick={btnConfirmSigned} disabled={signed || busy}>
-                    <Icon name="pen" />Xác nhận đã ký
-                  </button>
-                  {saved && <button type="button" className="btn" onClick={() => window.print()}><Icon name="print" />In lại</button>}
-                  {signed && <button type="button" className="btn" onClick={newContract}><Icon name="plus" />Soạn hợp đồng mới</button>}
-                  <button id="btnCancel" type="button" className="btn btn-ghost" onClick={btnCancel}>Hủy</button>
                 </div>
-              </div>
-            </section>
-          </aside>
+                <div className="card-body">
+                  <div className="total-box">
+                    <small>Giá trị hợp đồng</small>
+                    <b>{contract.value ? formatMoney(contract.value) : '—'}</b>
+                  </div>
+                  <dl className="summary">
+                    <div><dt>Nhà tài trợ</dt><dd>{contract.sponsor?.name || '—'}</dd></div>
+                    <div><dt>Mùa giải</dt><dd>{contract.season?.name || '—'}</dd></div>
+                    <div><dt>Hiệu lực</dt><dd>{contract.effectiveFrom && contract.effectiveTo ? `${formatDate(contract.effectiveFrom)} – ${formatDate(contract.effectiveTo)}` : '—'}</dd></div>
+                    <div><dt>Điều khoản / quyền lợi</dt><dd>{contract.listContractTerm.length} / {contract.listContractBenefit.length}</dd></div>
+                    {contract.signedDate && <div><dt>Ngày ký</dt><dd>{formatDate(contract.signedDate)}</dd></div>}
+                  </dl>
+                  <div className="stack" style={{ marginTop: 18 }}>
+                    <button id="btnSave" type="button" className="btn btn-primary btn-lg" onClick={btnSave} disabled={saved || busy}>
+                      <Icon name="print" />Lưu và in hợp đồng
+                    </button>
+                    <button id="btnConfirmSigned" type="button" className="btn btn-success btn-lg" onClick={btnConfirmSigned} disabled={signed || busy}>
+                      <Icon name="pen" />Xác nhận đã ký
+                    </button>
+                    {saved && <button type="button" className="btn" onClick={() => window.print()}><Icon name="print" />In lại</button>}
+                    {signed && <button type="button" className="btn" onClick={newContract}><Icon name="plus" />Soạn hợp đồng mới</button>}
+                    <button id="btnCancel" type="button" className="btn btn-ghost" onClick={btnCancel}>Hủy</button>
+                  </div>
+                </div>
+              </section>
+            </aside>
+          )}
         </div>
+
+        {!sidecarOpen && (
+          <button
+            type="button"
+            className="sidecar-floating-tab"
+            onClick={() => setSidecarOpen(true)}
+            title="Mở tóm tắt hợp đồng"
+          >
+            <Icon name="contract" size={17} />
+            <span>Tóm tắt</span>
+            {contract.value && <b>{formatMoney(contract.value)}</b>}
+            <span className="badge-count">{contract.listContractTerm.length}/{contract.listContractBenefit.length}</span>
+          </button>
+        )}
       </div>
 
       <ContractPrint contract={contract} />
@@ -400,7 +454,9 @@ function ContractPrint({ contract }) {
       <h2>Các điều khoản hợp đồng</h2>
       <ol>
         {contract.listContractTerm.map((ct) => (
-          <li key={ct.term.id}>{ct.term.title}{ct.notes ? `; ghi chú: ${ct.notes}` : ''}. <i>{ct.term.details}</i></li>
+          <li key={ct.term.id}>
+            {ct.term.title}{ct.notes ? `; ghi chú: ${ct.notes}` : ''}. <i>{ct.term.details}</i>{ct.term.punishment ? ` (Xử lý vi phạm: ${ct.term.punishment})` : ''}
+          </li>
         ))}
       </ol>
       <h2>Các quyền lợi của nhà tài trợ</h2>

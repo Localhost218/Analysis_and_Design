@@ -58,8 +58,8 @@ src/
 - Nhãn hiển thị **đúng chữ trên bản thiết kế giao diện** (cột "Nhãn").
 - Hộp thoại "OK" / xác nhận dùng `useDialog()` (**không** dùng `window.alert` / `window.confirm`). Chọn `type` đúng: lỗi → `error`, thành công → `success`, không tìm thấy / nhắc nhở → `info`. Luồng "click OK thì ..." viết bằng `await dialog.alert(...)` rồi mới điều hướng.
 - Giao diện:
-  - Mọi trang sau đăng nhập: `<main className="main">` + `PageHeader` (hero) + các `section.card` (`card-head` / `card-body`). Trang có bảng nhiều cột dùng `main wide` (RewardPayment) để bảng không phải cuộn ngang ở màn hình ≥ 1440px.
-  - Ký hợp đồng: cột tóm tắt bên phải `layout-aside` / `aside` (sticky), có `total-box` và các nút.
+  - Mọi trang sau đăng nhập: `<main className="main">` + `PageHeader` (hero) + các `section.card` (`card-head` / `card-body`). Trang có bảng nhiều cột dùng `main wide` (RewardPayment, ContractSigning) để bảng không phải cuộn ngang ở màn hình ≥ 1440px.
+  - Ký hợp đồng: dùng `main wide`; cột tóm tắt bên phải là **sidecar** `layout-aside` / `aside` (sticky), có thể thu gọn/mở rộng để giải phóng tối đa không gian cho bảng điều khoản và quyền lợi; khi thu gọn có nút nổi `sidecar-floating-tab` bên mép phải màn hình để mở lại nhanh.
   - Trả thưởng: các bảng trải hết chiều ngang; tổng tiền, nội dung, nút Hủy / Thanh toán nằm trên `checkout-bar` dính đáy màn hình (không dùng cột bên phải, vì khi xuống dòng trên màn hình hẹp sẽ để lại khoảng trống).
   - Nút: `btn btn-primary` (hành động chính, đỏ), `btn-success` (xác nhận đã ký), `btn` (phụ), `btn-ghost` (Hủy).
   - Trạng thái luôn hiển thị bằng `StatusBadge`, mã (MST, mã hợp đồng, mã hóa đơn) bằng `.chip`.
@@ -155,7 +155,7 @@ Phần **Điều khoản**:
 |---|---|---|
 | txtTermTitle + listTerm | input gợi ý | Tiêu đề: (placeholder "nhập tiêu đề, chọn từ gợi ý") |
 | btnNewTerm | button | Thêm điều khoản mới → mở cửa sổ NewTerm |
-| tblContractTerm | table | cột: TT, Tiêu đề, Nội dung (term.details), Ghi chú (input), Xóa |
+| tblContractTerm | table | cột: TT, Tiêu đề, Nội dung (term.details), Xử lý vi phạm (term.punishment), Ghi chú (input), Xóa |
 
 Phần **Quyền lợi**:
 | Tên | Loại | Nhãn |
@@ -175,12 +175,12 @@ Hành vi:
 - Gõ vào ô gợi ý (debounce 300 ms) thì gọi `GET /api/sponsors?name=`, `/api/seasons?name=`, `/api/terms?title=`, `/api/benefits?title=`. Rỗng: hiện "Không tìm thấy ..." và gợi ý bấm nút Thêm tương ứng.
 - Chọn điều khoản hoặc quyền lợi thì thêm một dòng vào bảng. Không cho chọn trùng. Click Xóa để bỏ dòng.
 - Mọi thay đổi ghi vào session `contract` (qua `useContractDraft`), để khi quay lại từ trang New* thì không mất dữ liệu.
-- Lưu và in hợp đồng: gọi `POST /api/contracts`.
-  - Lỗi: alert message.
+- Lưu và in hợp đồng: kiểm tra ràng buộc form (`validate()`: nhà tài trợ, mùa giải, giá trị số nguyên dương, thời gian hiệu lực, đại diện 2 bên, ít nhất 1 điều khoản, ít nhất 1 quyền lợi); nếu lỗi thì alert danh sách vi phạm. Hợp lệ thì gọi `POST /api/contracts`.
+  - Lỗi: alert message, giữ nguyên dữ liệu đang soạn và không chuyển trạng thái "Chờ ký" (cho phép thử lại).
   - Thành công: alert "Đã lưu hợp đồng <mã> ở trạng thái Chờ ký", lưu id/barcode vào `contract`, khóa form, rồi `window.print()` (in phần `.print-only`).
 - Xác nhận đã ký:
-  - Chưa lưu: alert "Hợp đồng chưa được lưu".
-  - Đã lưu: `confirm`, rồi gọi `PUT /api/contracts/{id}/signed`, alert "Đã cập nhật trạng thái hợp đồng", trạng thái thành `Đã ký` và khóa form.
+  - Chưa lưu: alert "Hợp đồng chưa được lưu. Hãy bấm 'Lưu và in hợp đồng' trước."
+  - Đã lưu: `confirm`, rồi gọi `PUT /api/contracts/{id}/signed`, alert "Đã cập nhật trạng thái hợp đồng", trạng thái thành `Đã ký` và khóa form (không cho ký lần 2).
 
 ### NewSponsor.jsx — **modal trên `/contracts/new`** — tiêu đề "Thêm nhà tài trợ"
 | Tên | Loại | Nhãn |
@@ -284,7 +284,9 @@ Thông tin (dl):
 | tblReceipt | table | tiêu đề "Các khoản trả thưởng"; cột: TT, Mùa giải – Chặng, Tay đua, Tiền thưởng |
 | (tổng) | text | Tổng tiền: amount VNĐ |
 | btnBack | button | Quay lại trang chủ → / (xóa `invoice`, `season`, `race`) |
-| (X / Tiếp tục trả thưởng) | button | đóng hóa đơn, ở lại trang trả thưởng với bảng thanh toán trống |
+| (In hóa đơn) | button | Mở hộp thoại in `window.print()` |
+| (Gửi lại email) | button | Gửi lại hóa đơn đến email của từng tay đua (cho trường hợp gửi email thất bại - ngoại lệ 21.3) |
+| (X / Tiếp tục trả thưởng) | button | Đóng hóa đơn, ở lại trang trả thưởng với bảng thanh toán trống |
 
 - Không gọi backend, đọc từ `invoice` trong session.
 
