@@ -24,19 +24,19 @@ class OrganizerDAOTest {
 
     @Test
     void checkLoginSuccess() {
-        Organizer o = organizerDAO.checkLogin(member("b", "b@123"));
+        Organizer o = organizerDAO.checkLogin(member("a", "a@123"));
         assertNotNull(o);
-        assertEquals("Nguyễn Thị B", o.getFullName());
+        assertEquals("Nguyễn Văn A", o.getFullName());
     }
 
     @Test
     void checkLoginWrongPassword() {
-        assertNull(organizerDAO.checkLogin(member("b", "sai")));
+        assertNull(organizerDAO.checkLogin(member("a", "sai")));
     }
 
     @Test
     void checkLoginNotOrganizer() {
         // tài khoản nhà tài trợ không đăng nhập được vào chức năng Ban tổ chức
-        assertNull(organizerDAO.checkLogin(member("redblue", "redblue@123")));
+        assertNull(organizerDAO.checkLogin(member("b", "b@123")));
     }
 }

@@ -21,8 +21,8 @@ class SponsorDAOTest {
 
     @Test
     void searchByNameRed() {
-        List<String> names = sponsorDAO.searchByName("red").stream().map(Sponsor::getName).toList();
-        assertTrue(names.containsAll(List.of("Red Bull", "Red Blue")));
+        List<String> names = sponsorDAO.searchByName("ar").stream().map(Sponsor::getName).toList();
+        assertTrue(names.containsAll(List.of("Aramco", "Qatar Airways")));
     }
 
     @Test
@@ -32,12 +32,12 @@ class SponsorDAOTest {
 
     @Test
     void getSponsorInfoOnlySignedContracts() {
-        Sponsor s = sponsorDAO.getSponsorInfo(3);
-        assertEquals("Red Bull", s.getName());
+        Sponsor s = sponsorDAO.getSponsorInfo(61);
+        assertEquals("Aramco", s.getName());
         assertFalse(s.getListContract().isEmpty());
         assertTrue(s.getListContract().stream().map(Contract::getStatus).allMatch("Đã ký"::equals));
-        // Mercedes chỉ có hợp đồng "Chờ ký" -> danh sách đã ký rỗng
-        assertTrue(sponsorDAO.getSponsorInfo(5).getListContract().isEmpty());
+        // Lenovo chỉ có hợp đồng "Chờ ký" -> danh sách đã ký rỗng
+        assertTrue(sponsorDAO.getSponsorInfo(64).getListContract().isEmpty());
     }
 
     private static Sponsor newSponsor(String taxCode) {
@@ -73,27 +73,28 @@ class SponsorDAOTest {
 
     @Test
     void updateSponsorSuccess() {
-        Sponsor s = sponsorDAO.getSponsorInfo(4); // Red Blue
+        Sponsor s = sponsorDAO.getSponsorInfo(2); // Heineken
         s.setField("Truyền thông số & Công nghệ");
         s.setTel("0912345999");
         assertTrue(sponsorDAO.updateSponsor(s));
 
-        Sponsor updated = sponsorDAO.getSponsorInfo(4);
+        Sponsor updated = sponsorDAO.getSponsorInfo(2);
         assertEquals("Truyền thông số & Công nghệ", updated.getField());
         assertEquals("0912345999", updated.getTel());
     }
 
     @Test
     void updateSponsorDuplicateTaxCode() {
-        Sponsor s = newSponsor("0301234567"); // MST của Red Bull
-        s.setId(4); // Cập nhật cho Red Blue
+        Sponsor s = newSponsor("0311234567"); // MST của Aramco
+        s.setId(2); // Cập nhật cho Heineken
         assertFalse(sponsorDAO.updateSponsor(s));
     }
 
     @Test
     void deleteSponsorWithContractsThrowsException() {
-        // Red Bull (id 3) đã có hợp đồng C101, C102 -> không được xóa
-        assertThrows(SponsorException.class, () -> sponsorDAO.deleteSponsor(3));
+        // Aramco (id 61) đã có hợp đồng -> không được xóa; Salesforce (69) ngừng hợp tác nhưng có hợp đồng cũ
+        assertThrows(SponsorException.class, () -> sponsorDAO.deleteSponsor(61));
+        assertThrows(SponsorException.class, () -> sponsorDAO.deleteSponsor(69));
     }
 
     @Test
@@ -107,8 +108,8 @@ class SponsorDAOTest {
 
     @Test
     void getContractsBySponsorIncludesWaitingAndSigned() {
-        // Red Blue (id 4) có cả C105 (Chờ ký) và C106 (Đã ký)
-        List<Contract> contracts = sponsorDAO.getContractsBySponsor(4);
+        // Heineken (id 2) có HĐ 2025, 2026 (Đã ký) và 2027 (Chờ ký)
+        List<Contract> contracts = sponsorDAO.getContractsBySponsor(2);
         assertFalse(contracts.isEmpty());
         List<String> statuses = contracts.stream().map(Contract::getStatus).toList();
         assertTrue(statuses.contains("Chờ ký"));
@@ -118,11 +119,11 @@ class SponsorDAOTest {
     @Test
     void checkLoginWithUsernameSuccess() {
         Member m = new Member();
-        m.setUsername("redblue");
-        m.setPassword("redblue@123");
+        m.setUsername("b");
+        m.setPassword("b@123");
         Sponsor s = sponsorDAO.checkLogin(m);
         assertNotNull(s);
-        assertEquals("Red Blue", s.getName());
+        assertEquals("Heineken", s.getName());
         assertEquals("0123456789", s.getTaxCode());
     }
 
@@ -130,16 +131,16 @@ class SponsorDAOTest {
     void checkLoginWithTaxCodeSuccess() {
         Member m = new Member();
         m.setUsername("0123456789");
-        m.setPassword("redblue@123");
+        m.setPassword("b@123");
         Sponsor s = sponsorDAO.checkLogin(m);
         assertNotNull(s);
-        assertEquals("Red Blue", s.getName());
+        assertEquals("Heineken", s.getName());
     }
 
     @Test
     void checkLoginWrongPasswordReturnsNull() {
         Member m = new Member();
-        m.setUsername("redblue");
+        m.setUsername("b");
         m.setPassword("wrong-pass");
         assertNull(sponsorDAO.checkLogin(m));
     }

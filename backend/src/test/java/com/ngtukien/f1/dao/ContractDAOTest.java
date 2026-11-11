@@ -25,17 +25,17 @@ class ContractDAOTest {
         return entity;
     }
 
-    /** Hợp đồng theo kịch bản: Red Blue tài trợ F1 FIA 2026. */
+    /** Hợp đồng theo kịch bản: Heineken (b) tài trợ F1 FIA 2026. */
     private static Contract redBlueContract() {
         Contract c = new Contract();
-        c.setSponsor(withId(new Sponsor(), 4));
-        c.setSeason(withId(new Season(), 3));
-        c.setOrganizer(withId(new Organizer(), 2));
+        c.setSponsor(withId(new Sponsor(), 2));
+        c.setSeason(withId(new Season(), 2));
+        c.setOrganizer(withId(new Organizer(), 1));
         c.setValue(1_000_000_000);
         c.setEffectiveFrom(LocalDate.of(2026, 3, 6));
         c.setEffectiveTo(LocalDate.of(2026, 12, 6));
-        c.setSponsorRepresentative("Nguyễn Văn A");
-        c.setOrganizerRepresentative("Nguyễn Thị B");
+        c.setSponsorRepresentative("Trần Minh Quân");
+        c.setOrganizerRepresentative("Nguyễn Văn A");
         ContractTerm t1 = new ContractTerm();
         t1.setTerm(withId(new Term(), 1));
         t1.setNotes("thanh toán trong vòng 7 ngày sau khi kết thúc chặng");
@@ -101,9 +101,9 @@ class ContractDAOTest {
 
     @Test
     void createWithStoppedSponsor() {
-        // Oracle (id=6) có trạng thái "Ngừng hợp tác" -> không được phép ký hợp đồng
+        // Salesforce (id=69) có trạng thái "Ngừng hợp tác" -> không được phép ký hợp đồng
         Contract c = redBlueContract();
-        c.setSponsor(withId(new Sponsor(), 6));
+        c.setSponsor(withId(new Sponsor(), 69));
         assertFalse(contractDAO.createContract(c));
     }
 

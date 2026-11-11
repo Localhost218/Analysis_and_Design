@@ -24,20 +24,20 @@ class DriverDAOTest {
 
     @Test
     void getDriverInfoSuccess() {
-        Driver driver = driverDAO.getDriverInfo(20); // Trần Văn B
+        Driver driver = driverDAO.getDriverInfo(3); // Lando Norris (tài khoản c)
         assertNotNull(driver);
-        assertEquals("Trần Văn B", driver.getFullName());
+        assertEquals("Lando Norris", driver.getFullName());
         assertFalse(driver.getListBankAccount().isEmpty());
     }
 
     @Test
     void getRewardsByDriverSuccess() {
-        // Trần Văn B (id 20)
-        List<RegisteredReceipt> rewards = driverDAO.getRewardsByDriver(20);
+        // Lando Norris (id 3)
+        List<RegisteredReceipt> rewards = driverDAO.getRewardsByDriver(3);
         assertNotNull(rewards);
         assertFalse(rewards.isEmpty());
         for (RegisteredReceipt r : rewards) {
-            assertEquals("Trần Văn B", r.getRegisteredDriver().getDriver().getFullName());
+            assertEquals("Lando Norris", r.getRegisteredDriver().getDriver().getFullName());
             assertNotNull(r.getRace());
             assertNotNull(r.getPaymentStatus());
         }
@@ -46,18 +46,18 @@ class DriverDAOTest {
     @Test
     void checkLoginDriverSuccess() {
         Member m = new Member();
-        m.setUsername("driver.tranvanb");
-        m.setPassword("123456");
+        m.setUsername("c");
+        m.setPassword("c@123");
         Driver d = driverDAO.checkLogin(m);
         assertNotNull(d);
-        assertEquals("Trần Văn B", d.getFullName());
-        assertEquals(50, d.getRacingNumber());
+        assertEquals("Lando Norris", d.getFullName());
+        assertEquals(1, d.getRacingNumber());
     }
 
     @Test
     void checkLoginWrongPasswordReturnsNull() {
         Member m = new Member();
-        m.setUsername("driver.tranvanb");
+        m.setUsername("c");
         m.setPassword("wrong");
         assertNull(driverDAO.checkLogin(m));
     }
@@ -76,7 +76,7 @@ class DriverDAOTest {
         b.setId(bankId);
         a.setBank(b);
         a.setAccountNumber(number);
-        a.setAccountHolder("Tran Van B");
+        a.setAccountHolder("Lando Norris");
         a.setIsDefault(isDefault);
         return a;
     }
@@ -87,29 +87,29 @@ class DriverDAOTest {
 
     @Test
     void addBankAccountAsDefaultMovesDefault() {
-        Driver d = driverDAO.addBankAccount(20, input(5, "99887766", true));
+        Driver d = driverDAO.addBankAccount(3, input(5, "99887766", true));
         assertEquals(1, defaultCount(d));
         BankAccount added = d.getListBankAccount().stream()
                 .filter(a -> "99887766".equals(a.getAccountNumber())).findFirst().orElseThrow();
         assertTrue(added.getIsDefault());
-        assertEquals("TRAN VAN B", added.getAccountHolder());
+        assertEquals("LANDO NORRIS", added.getAccountHolder());
     }
 
     @Test
     void addFirstBankAccountBecomesDefault() {
-        // Alexander Albon (30) chưa có tài khoản nào
-        Driver d = driverDAO.addBankAccount(30, input(1, "30303030", false));
+        // Isack Hadjar (48) chưa có tài khoản nào
+        Driver d = driverDAO.addBankAccount(48, input(1, "30303030", false));
         assertEquals(1, d.getListBankAccount().size());
         assertTrue(d.getListBankAccount().get(0).getIsDefault());
     }
 
     @Test
     void addBankAccountInvalidOrDuplicateRejected() {
-        assertThrows(DriverException.class, () -> driverDAO.addBankAccount(20, input(1, "12ab", false)));
-        assertThrows(DriverException.class, () -> driverDAO.addBankAccount(20, input(1, "0123456789", false)));
+        assertThrows(DriverException.class, () -> driverDAO.addBankAccount(3, input(1, "12ab", false)));
+        assertThrows(DriverException.class, () -> driverDAO.addBankAccount(3, input(1, "011000001", false)));
     }
 
-    /** Tài khoản mặc định / không mặc định hiện tại của Trần Văn B (người dùng có thể đã đổi trên giao diện). */
+    /** Tài khoản mặc định / không mặc định hiện tại của Lando Norris (người dùng có thể đã đổi trên giao diện). */
     private BankAccount accountOf(int driverId, boolean isDefault) {
         return driverDAO.getDriverInfo(driverId).getListBankAccount().stream()
                 .filter(a -> Boolean.TRUE.equals(a.getIsDefault()) == isDefault)
@@ -118,38 +118,38 @@ class DriverDAOTest {
 
     @Test
     void updateSetsNewDefaultAndCannotUnsetDefault() {
-        BankAccount other = accountOf(20, false);
-        Driver d = driverDAO.updateBankAccount(20, other.getId(), input(other.getBank().getId(), other.getAccountNumber(), true));
+        BankAccount other = accountOf(3, false);
+        Driver d = driverDAO.updateBankAccount(3, other.getId(), input(other.getBank().getId(), other.getAccountNumber(), true));
         assertEquals(1, defaultCount(d));
         assertTrue(d.getListBankAccount().stream().anyMatch(a -> a.getId().equals(other.getId()) && a.getIsDefault()));
         assertThrows(DriverException.class,
-                () -> driverDAO.updateBankAccount(20, other.getId(), input(other.getBank().getId(), other.getAccountNumber(), false)));
+                () -> driverDAO.updateBankAccount(3, other.getId(), input(other.getBank().getId(), other.getAccountNumber(), false)));
     }
 
     @Test
     void deleteBankAccountRules() {
-        BankAccount def = accountOf(20, true);
-        BankAccount other = accountOf(20, false);
-        assertThrows(DriverException.class, () -> driverDAO.deleteBankAccount(20, def.getId()));
-        Driver d = driverDAO.deleteBankAccount(20, other.getId());
+        BankAccount def = accountOf(3, true);
+        BankAccount other = accountOf(3, false);
+        assertThrows(DriverException.class, () -> driverDAO.deleteBankAccount(3, def.getId()));
+        Driver d = driverDAO.deleteBankAccount(3, other.getId());
         assertTrue(d.getListBankAccount().stream().noneMatch(a -> a.getId().equals(other.getId())));
-        assertNull(driverDAO.deleteBankAccount(21, def.getId())); // không phải tài khoản của tay đua 21
+        assertNull(driverDAO.deleteBankAccount(30, def.getId())); // không phải tài khoản của Verstappen (30)
     }
 
     @Test
     void updateDriverInfoKeepsLockedFields() {
         Driver input = new Driver();
-        input.setFullName(" Trần Văn Bình ");
+        input.setFullName(" Lando Norris Jr. ");
         input.setNationality("Việt Nam");
         input.setDateOfBirth(LocalDate.of(2000, 1, 2));
         input.setRacingNumber(99);
         input.setUsername("hacked");
-        Driver d = driverDAO.updateDriverInfo(20, input);
-        assertEquals("Trần Văn Bình", d.getFullName());
-        assertEquals(50, d.getRacingNumber());
-        assertEquals("driver.tranvanb", d.getUsername());
+        Driver d = driverDAO.updateDriverInfo(3, input);
+        assertEquals("Lando Norris Jr.", d.getFullName());
+        assertEquals(1, d.getRacingNumber());
+        assertEquals("c", d.getUsername());
 
         input.setDateOfBirth(LocalDate.now().minusYears(5));
-        assertThrows(DriverException.class, () -> driverDAO.updateDriverInfo(20, input));
+        assertThrows(DriverException.class, () -> driverDAO.updateDriverInfo(3, input));
     }
 }

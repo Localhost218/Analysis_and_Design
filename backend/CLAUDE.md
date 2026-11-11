@@ -18,7 +18,7 @@
 ## Lệnh
 ```bash
 ./mvnw spring-boot:run   # chạy, cổng 8080 (cần container database đang chạy)
-./mvnw test              # 61 test, cần container database đang chạy
+./mvnw test              # 63 test, cần container database đang chạy
 ./mvnw package           # build target/app.jar
 ```
 Docker: `Dockerfile` build bằng maven:3.9.9-eclipse-temurin-21 (`-DskipTests`, vì test cần DB) rồi chạy bằng eclipse-temurin:21-jre-alpine với `-Duser.timezone=Asia/Ho_Chi_Minh`.
@@ -37,7 +37,8 @@ src/test/java/com/ngtukien/f1/
   controller/   ApiTest: JSON trả về và mã lỗi HTTP
 src/main/resources/
   schema.sql    17 bảng (liệt kê bên dưới)
-  data.sql      dữ liệu mẫu
+  data.sql      dữ liệu mẫu (sinh tự động, xem mục "Dữ liệu mẫu")
+tools/f1-data/  script crawl formula1.com + sinh data.sql (không thuộc ứng dụng)
 ```
 
 ---
@@ -256,33 +257,17 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 - Xem chi tiết bảng ma trận kịch bản ngoại lệ đầy đủ tại `CLAUDE.md` ở thư mục gốc.
 
 ## Dữ liệu mẫu (`data.sql`)
-Id cố định + `ON CONFLICT DO NOTHING`: hàng đã có thì bỏ qua (sửa một hàng cũ trong file **không** cập nhật CSDL đang chạy). Thêm dữ liệu mới thì dùng id lớn hơn id lớn nhất đang có trong CSDL. Test chạy trên CSDL thật nên không giả định trạng thái người dùng có thể đổi trên giao diện (vd tài khoản mặc định), mà đọc lại từ DAO.
+**Sinh tự động** bằng `tools/f1-data/gen_data.py` (xem README ở đó), không sửa tay: sửa script rồi sinh lại. Id cố định + `ON CONFLICT DO NOTHING` nên sinh lại xong phải làm trống CSDL rồi khởi động lại backend. Test chạy trên CSDL thật nên không giả định trạng thái người dùng có thể đổi trên giao diện (vd tài khoản mặc định), mà đọc lại từ DAO.
 
-- **Organizer**: `a` / `a@123` (Nguyễn Văn A, id 1), `b` / `b@123` (Nguyễn Thị B, id 2)
-- **Sponsor** (mã hiển thị `S` + id 3 chữ số; mật khẩu `<username>@123`):
-  - Red Bull (3): 2 hợp đồng đã ký (C101 2025, C102 2026)
-  - **Red Blue** (4, MST 0123456789): 1 `Chờ ký` (C105 2026), 1 `Đã ký` (C106 2025)
-  - Mercedes-AMG Petronas (5): chỉ có hợp đồng `Chờ ký` (C103), chi tiết NTT hiện "Chưa có"
-  - Oracle (6): `Ngừng hợp tác`, có hợp đồng cũ C107 (2024) → không ký mới được, không xóa được
-  - Heineken (7), Honda Racing (8): chưa có hợp đồng nào → xóa được
-  - Vietnam Airlines (9): hợp đồng 2024 đã hết hạn (C104)
-- **Season**: 2025 (1), 2024 (2), **2026** (3), 2027 (4, chặng chưa diễn ra), 2028 (5, chưa có chặng nào)
-- **Race** (tên dạng "C03 – Australian"):
-  - 2025: 1 C01 Bahrain (**đồng hạng 2** Leclerc / Norris, Russell `Không xuất phát`), 2 C02 Saudi Arabia (**chưa có basePrize, chưa có kết quả**), 3 C03 Australian (Verstappen **đã trả** HD001, Piastri `Bỏ cuộc`)
-  - 2024: 4 C24 Abu Dhabi (Hamilton `Tai nạn`)
-  - 2026: 5 C01 Bahrain (chưa trả); **8 C02 Saudi Arabia** (đủ mọi ngoại lệ tài khoản, xem dưới; Leclerc đã trả trực tiếp HD012; Norris `Bỏ cuộc`, Piastri `Bị truất quyền`); 9 C03 Australian (**có basePrize, chưa có kết quả**); 10 C04 Japan (**có kết quả, chưa có basePrize**); 11 C05 Miami (basePrize 80.000.000); 6 C24 Abu Dhabi (chưa diễn ra, hạng 11 không có thưởng)
-  - 2027: 7 C01 Bahrain (chưa diễn ra)
-- **Hóa đơn**: HD001 (online, 1 kết quả), HD002 (C24 2026), **HD012** (`Trả thưởng trực tiếp`), **HD013** (online, gộp 2 chặng C02 + C05 2026 của Hamilton)
-- **Tay đua và tài khoản ngân hàng** (mật khẩu `123456`):
-  - Trần Văn B `driver.tranvanb` (20): 3 tài khoản, 1 mặc định
-  - Verstappen (22), Norris (23), Leclerc (24): nhiều tài khoản, 1 mặc định
-  - Nguyễn Văn An (21), Hamilton (25), Piastri (26): 1 tài khoản mặc định
-  - Russell (28): thêm tài khoản ở ngân hàng `Ngừng hoạt động` (SCB, id 7, không hiện trong ô chọn ngân hàng)
-  - **Lê Minh Cường** `driver.leminhcuong` (27): nhiều tài khoản, **không có mặc định** → "Thiếu thông tin nhận thưởng"
-  - **Carlos Sainz** (29): tài khoản mặc định **bị `Tạm khóa`** → trả online lỗi, trả trực tiếp được
-  - **Alexander Albon** (30): **chưa có tài khoản** → trả online lỗi, trả trực tiếp được
-  - **Đoàn Minh Khoa** `driver.doanminhkhoa` (33): chưa thuộc đội, chưa thi đấu (bảng tiền thưởng trống), 1 tài khoản mặc định duy nhất
-- **Term / Benefit**: 5 + 5 đang hoạt động; term 6 "Độc quyền ngành hàng" và benefit 6 "Quảng cáo trên vé giấy" `Ngừng hoạt động` (không hiện trong gợi ý, vẫn hiện trong hợp đồng C107)
+- **Thật (crawl formula1.com ngày 11/11/2026)**: mùa F1 FIA 2025 (id 1, 24 chặng), F1 FIA 2026 (id 2, 23 chặng); tên chặng dạng "C01 – Australia", số vòng, trường đua, giờ xuất phát **quy đổi sang giờ Việt Nam**, mô tả = tên chính thức của GP; kết quả (hạng, điểm, số vòng, thời gian về đích, trạng thái `Hoàn thành` / `Bỏ cuộc` / `Không xuất phát` / `Bị truất quyền` / `Không được xếp hạng`); 26 tay đua (họ tên, ngày sinh, quốc tịch, số xe mới nhất); 12 đội (Kick Sauber 2025 và Audi 2026 là 2 đội); tên 14 nhà tài trợ lấy từ danh sách đối tác F1. Tay đua đổi đội giữa chừng (Tsunoda, Lawson, Hadjar, Hulkenberg, Bortoleto) có nhiều dòng `tblRegisteredDriver`. Kết quả thật không có đồng hạng: trường hợp đồng hạng chỉ test bằng `RaceDAO.calculateReward`.
+- **Giả lập**: tài khoản đăng nhập, mức thưởng cơ sở (100.000.000; Monaco, Abu Dhabi 150.000.000; Las Vegas 120.000.000), hóa đơn, tài khoản ngân hàng, MST / liên hệ NTT, hợp đồng, mùa 2027 (id 3, chưa có chặng, ngày dự kiến).
+- **Tài khoản**: `a` Organizer Nguyễn Văn A (id 1, organizer duy nhất); `b` Sponsor **Heineken** (id 2, MST 0123456789); `c` Driver **Lando Norris** (id 3, số xe 1, 3 tài khoản ngân hàng); `d` Khách hàng (id 4). Thành viên khác: đội `team.<tên>`, tay đua `driver.<họ>` / `123456`, NTT `<tên>` / `<tên>@123` (id NTT 61–73).
+- **Chặng đặc biệt (2026)**: 41 C17 Singapore (đã trả, trừ Lawson hạng 7); **42 C18 United States (chưa trả, dùng cho kịch bản trả thưởng)**; 43 C19 Mexico (**có kết quả, chưa có basePrize**); 44 C20 Brazil (**có basePrize, chưa nhập kết quả**); 45–47 Las Vegas, Qatar, Abu Dhabi chưa diễn ra. Mọi chặng khác đã kết thúc đều đã trả.
+- **Kết quả US 2026 (race 42)**: 854 Antonelli hạng 1, 855 Leclerc 2, 858 Norris 5, 859 **Isack Hadjar** 6 (**chưa có tài khoản ngân hàng**), 862 **Liam Lawson** 9 (**có tài khoản nhưng không có mặc định**), 863 **Pierre Gasly** 10 (**tài khoản mặc định bị `Tạm khóa`**), 864 Hulkenberg 11 (thưởng 0), 873 Bottas `Bỏ cuộc`.
+- **Hóa đơn** HD001–HD066: mỗi chặng một hóa đơn `Chuyển khoản online` + một hóa đơn `Trả thưởng trực tiếp` cho Hadjar / Lawson nếu có thưởng; Las Vegas + Qatar + Abu Dhabi 2025 gộp chung một hóa đơn.
+- **Ngân hàng**: 6 ngân hàng `Hoạt động` + SCB (id 7) `Ngừng hoạt động` (Russell có tài khoản phụ ở đây).
+- **Nhà tài trợ / hợp đồng** (barcode `C` + (100 + id)): Heineken (b) Đã ký 2025, 2026 + Chờ ký 2027; Aramco (61) Đã ký 2025, 2026; AWS (62) chưa có HĐ (xóa được); Lenovo (64), Crypto.com (71) chỉ có Chờ ký; Qatar Airways (68) chỉ có HĐ 2025 đã hết hạn; **Salesforce (69) `Ngừng hợp tác`** có HĐ cũ (không ký mới, không xóa được); Pirelli, DHL, LVMH có HĐ 2026.
+- **Term / Benefit**: 5 + 5 đang hoạt động; term 6 "Độc quyền ngành hàng", benefit 6 "Quảng cáo trên vé giấy" `Ngừng hoạt động` (không hiện trong gợi ý, vẫn hiện trong HĐ Salesforce).
 
 ## Không được làm
 - Không thêm tầng service hay Spring Data repository.

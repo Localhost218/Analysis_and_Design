@@ -27,33 +27,43 @@ class RaceDAOTest {
 
     @Test
     void rewardByRankCoefficient() {
-        Map<String, Integer> r = rewardByDriver(3); // C03 – Australian, mức thưởng 100.000.000
-        assertEquals(100_000_000, r.get("Trần Văn B"));
-        assertEquals(72_000_000, r.get("Nguyễn Văn An"));
-        assertEquals(60_000_000, r.get("Max Verstappen")); // đã trả, giữ nguyên
-        assertEquals(16_000_000, r.get("Lê Minh Cường"));
-        assertEquals(0, r.get("Oscar Piastri"));          // Bỏ cuộc
+        Map<String, Integer> r = rewardByDriver(42); // C18 – United States 2026, mức thưởng 100.000.000, chưa trả
+        assertEquals(100_000_000, r.get("Kimi Antonelli"));
+        assertEquals(72_000_000, r.get("Charles Leclerc"));
+        assertEquals(32_000_000, r.get("Isack Hadjar"));
+        assertEquals(4_000_000, r.get("Pierre Gasly"));
+        assertEquals(0, r.get("Nico Hulkenberg"));      // hạng 11
+        assertEquals(0, r.get("Valtteri Bottas"));      // Bỏ cuộc
     }
 
     @Test
-    void rewardTiedRank() {
-        Map<String, Integer> r = rewardByDriver(1); // C01 – Bahrain 2025: đồng hạng 2
-        assertEquals(66_000_000, r.get("Charles Leclerc"));
-        assertEquals(66_000_000, r.get("Lando Norris"));
-        assertEquals(48_000_000, r.get("Lewis Hamilton"));
-        assertEquals(0, r.get("George Russell"));         // Không xuất phát
+    void paidRewardKeptAndHigherBasePrize() {
+        assertEquals(100_000_000, rewardByDriver(41).get("Max Verstappen")); // Singapore 2026, đã trả
+        assertEquals(24_000_000, rewardByDriver(41).get("Liam Lawson"));     // hạng 7, chưa trả
+        Race monaco = raceDAO.getRaceInfo(30);                                // Monaco 2026, mức thưởng 150.000.000
+        assertEquals(150_000_000, monaco.getBasePrize());
+        assertEquals(150_000_000, monaco.getListRegisteredReceipt().stream()
+                .filter(x -> Integer.valueOf(1).equals(x.getRank())).findFirst().orElseThrow().getReward());
     }
 
     @Test
-    void rewardAbuDhabi() {
-        assertEquals(86_400_000, rewardByDriver(4).get("Lando Norris")); // 120.000.000 × 0.72
+    void twoWayTie() {
+        RegisteredReceipt a = receipt(1), b = receipt(2), c = receipt(2), d = receipt(4);
+        RaceDAO.calculateReward(100_000_000, List.of(a, b, c, d));
+        assertEquals(100_000_000, a.getReward());
+        assertEquals(66_000_000, b.getReward()); // (0.72 + 0.60) / 2
+        assertEquals(66_000_000, c.getReward());
+        assertEquals(48_000_000, d.getReward());
     }
 
     @Test
     void raceWithoutBasePrizeOrResults() {
-        Race race = raceDAO.getRaceInfo(2);
-        assertNull(race.getBasePrize());
-        assertTrue(race.getListRegisteredReceipt().isEmpty());
+        Race mexico = raceDAO.getRaceInfo(43); // Mexico 2026: có kết quả, chưa có mức thưởng
+        assertNull(mexico.getBasePrize());
+        assertFalse(mexico.getListRegisteredReceipt().isEmpty());
+        Race brazil = raceDAO.getRaceInfo(44); // Brazil 2026: có mức thưởng, chưa nhập kết quả
+        assertNotNull(brazil.getBasePrize());
+        assertTrue(brazil.getListRegisteredReceipt().isEmpty());
         assertNull(raceDAO.getRaceInfo(9999));
     }
 

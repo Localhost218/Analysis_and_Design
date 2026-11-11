@@ -81,7 +81,7 @@ src/
 | organizer | Organizer | Login | mọi trang của Ban tổ chức |
 | sponsor | Sponsor | Login, SponsorManagement | SponsorDetail, SponsorPortal |
 | driver | Driver | Login | DriverPortal |
-| customer | Customer/Member | Login | SponsorManagement (read-only) |
+| customer | Customer/Member (vd `d`) | Login | SponsorManagement (read-only) |
 | contract | Contract đang soạn (kèm listContractTerm, listContractBenefit), qua `useContractDraft` | ContractSigning, New* | ContractSigning (giữ dữ liệu khi qua lại New*) |
 | sponsorKeyword, sponsorResults | từ khóa và kết quả tìm gần nhất | SponsorManagement | SponsorManagement (quay lại từ chi tiết vẫn còn danh sách) |
 | season | Season đang chọn (kèm listRace) | RewardPayment | RewardPayment |
@@ -269,7 +269,7 @@ Mục **"Kết quả chặng đua"**:
 Mục **"Bảng thanh toán"**:
 | Tên | Loại | Nhãn / Cột |
 |---|---|---|
-| tblPayment | table | TT, Mùa giải – Chặng ("2025 – C03"), Tay đua ("Trần Văn B (#50)"), Ngân hàng, Chủ tài khoản, Số tài khoản, Tiền thưởng |
+| tblPayment | table | TT, Mùa giải – Chặng ("2025 – C03"), Tay đua ("Lando Norris (#1)"), Ngân hàng, Chủ tài khoản, Số tài khoản, Tiền thưởng |
 | lblTotalAmount | label | Tổng tiền: 172.000.000 VNĐ |
 | selectPaymentMethod | select | Phương thức thanh toán: `Chuyển khoản online` (mặc định) / `Trả thưởng trực tiếp` (Module 3) |
 | txtContent | input | Nội dung: |

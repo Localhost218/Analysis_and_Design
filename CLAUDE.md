@@ -53,16 +53,18 @@ docker compose logs -f backend
 docker compose down              # dừng (dữ liệu vẫn còn ở ./database)
 ```
 Tài khoản đăng nhập mẫu:
-- **Ban tổ chức (ORGANIZER)**: `a` / `a@123` hoặc `b` / `b@123`
-- **Nhà tài trợ (SPONSOR)**: `redblue` / `redblue@123` (hoặc đăng nhập bằng mã số thuế `0123456789` với mật khẩu `redblue@123`)
-- **Tay đua (DRIVER)**: `driver.tranvanb` / `123456` (Trần Văn B), `driver.leminhcuong` (không có TK mặc định), `driver.sainz` (TK mặc định bị khóa), `driver.albon` (chưa có TK), `driver.doanminhkhoa` (chưa thi đấu); đều mật khẩu `123456`. Danh sách đầy đủ các tình huống dữ liệu: mục "Dữ liệu mẫu" trong `backend/CLAUDE.md`
-- **Khách hàng (CUSTOMER)**: `customer` / `customer@123`
+- **Ban tổ chức (ORGANIZER)**: `a` / `a@123` (Nguyễn Văn A)
+- **Nhà tài trợ (SPONSOR)**: `b` / `b@123` (Heineken; hoặc đăng nhập bằng mã số thuế `0123456789` với mật khẩu `b@123`)
+- **Tay đua (DRIVER)**: `c` / `c@123` (Lando Norris)
+- **Khách hàng (CUSTOMER)**: `d` / `d@123`
+
+Dữ liệu mùa giải, chặng, kết quả, tay đua, đội là dữ liệu thật crawl từ formula1.com (mùa 2025, 2026); xem mục "Dữ liệu mẫu" trong `backend/CLAUDE.md` và `backend/tools/f1-data/`.
 
 Khi phát triển (chỉ chạy DB trong Docker):
 ```bash
 docker compose up -d database
 cd backend && ./mvnw spring-boot:run       # :8080
-cd backend && ./mvnw test                  # 61 test, cần database đang chạy, tự rollback
+cd backend && ./mvnw test                  # 63 test, cần database đang chạy, tự rollback
 cd frontend && npm install && npm run dev  # :5173, proxy /api → :8080
 ```
 Đã sửa code thì build lại image: `docker compose up -d --build backend` (hoặc `frontend`).
@@ -151,7 +153,7 @@ Toàn bộ các luồng ngoại lệ được trích xuất từ Mục 2 ("Kịc
 ### 7. Bổ sung: Cổng thông tin Nhà tài trợ & Tay đua
 | Đối tượng | Chức năng | Xử lý Frontend | Xử lý Backend | Ghi chú |
 |---|---|---|---|---|
-| **Nhà tài trợ** | Đăng nhập linh hoạt | Nhập username (vd: `redblue`) HOẶC mã số thuế (vd: `0123456789`) | `MemberDAO.checkLoginUniversal` kiểm tra cả username trong `tblMember` lẫn `taxCode` trong `tblSponsor` | Rất tiện lợi cho doanh nghiệp |
+| **Nhà tài trợ** | Đăng nhập linh hoạt | Nhập username (vd: `b`) HOẶC mã số thuế (vd: `0123456789`) | `MemberDAO.checkLoginUniversal` kiểm tra cả username trong `tblMember` lẫn `taxCode` trong `tblSponsor` | Rất tiện lợi cho doanh nghiệp |
 | **Nhà tài trợ** | Xem & quản lý hợp đồng | `/sponsor-portal`: xem thống kê, lọc hợp đồng (Tất cả, Đã ký, Chờ ký), xem chi tiết hợp đồng gồm các điều khoản (có hình phạt vi phạm) và quyền lợi | `SponsorDAO.getContractsBySponsor` và `ContractDAO.getContractById` | Hợp đồng minh bạch đầy đủ thông tin |
 | **Tay đua** | Tra cứu thưởng & hóa đơn | `/driver-portal`: xem thông tin cá nhân & tài khoản nhận thưởng mặc định; xem bảng tiền thưởng theo từng chặng và trạng thái; bấm "Xem hóa đơn" để mở modal xem hóa đơn | `DriverDAO.getRewardsByDriver` và `RewardInvoiceDAO.getInvoiceById` | Tay đua theo dõi chính xác thu nhập và hóa đơn chứng từ |
 | **Tay đua** | Sửa thông tin cá nhân | Nút "Chỉnh sửa thông tin" mở modal `EditDriver` (họ tên, ngày sinh, quốc tịch; tên đăng nhập và số xe chỉ đọc) | `DriverDAO.updateDriverInfo` chỉ đổi 3 trường trên; ném `DriverException` nếu thiếu tên / quốc tịch hoặc dưới 16 tuổi → HTTP 400 | Chỉ sửa được thông tin của chính mình (id lấy từ phiên đăng nhập) |

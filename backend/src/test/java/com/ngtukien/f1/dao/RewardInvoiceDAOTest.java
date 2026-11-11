@@ -25,16 +25,19 @@ class RewardInvoiceDAOTest {
     @Autowired
     EntityManager em;
 
+    // Dữ liệu thật: C18 – United States 2026 (race 42, chưa trả), C17 – Singapore 2026 (race 41, đã trả trừ Lawson)
+    // Kết quả US 2026: 854 Antonelli (1), 855 Leclerc (2), 858 Lando Norris (5), 859 Isack Hadjar (6, chưa có TK),
+    // 862 Liam Lawson (9, không có TK mặc định), 863 Pierre Gasly (10, TK mặc định bị khóa), 864 Hulkenberg (11)
     @BeforeEach
     void calculateRewards() {
-        raceDAO.getRaceInfo(3);
-        raceDAO.getRaceInfo(4);
+        raceDAO.getRaceInfo(41);
+        raceDAO.getRaceInfo(42);
     }
 
     private static RewardInvoice invoiceOf(Integer... receiptIds) {
         RewardInvoice inv = new RewardInvoice();
         Organizer o = new Organizer();
-        o.setId(2);
+        o.setId(1);
         inv.setOrganizer(o);
         inv.setListRegisteredReceipt(Arrays.stream(receiptIds).map(id -> {
             RegisteredReceipt r = new RegisteredReceipt();
@@ -45,49 +48,63 @@ class RewardInvoiceDAOTest {
     }
 
     @Test
-    void payManyDriversAcrossSeasons() {
-        // Kịch bản: Trần Văn B + Nguyễn Văn An (C03 2025) + Lando Norris (C24 2024) = 258.400.000
-        RewardInvoice inv = rewardInvoiceDAO.createRewardInvoice(invoiceOf(1, 2, 11));
-        assertEquals(258_400_000, inv.getAmount());
+    void payManyDrivers() {
+        // Antonelli 100.000.000 + Leclerc 72.000.000 + Norris 40.000.000 = 212.000.000
+        RewardInvoice inv = rewardInvoiceDAO.createRewardInvoice(invoiceOf(854, 855, 858));
+        assertEquals(212_000_000, inv.getAmount());
         assertEquals(String.format("HD%03d", inv.getId()), inv.getBarcode());
         assertEquals("Thanh toán thành công", inv.getStatus());
         assertEquals("Chuyển khoản online", inv.getPaymentMethod());
-        assertEquals("Đã trả", em.find(RegisteredReceipt.class, 1).getPaymentStatus());
-        assertEquals("Đã trả", em.find(RegisteredReceipt.class, 11).getPaymentStatus());
+        assertEquals("Đã trả", em.find(RegisteredReceipt.class, 854).getPaymentStatus());
+        assertEquals("Đã trả", em.find(RegisteredReceipt.class, 858).getPaymentStatus());
     }
 
     @Test
     void alreadyPaid() {
+        // Verstappen thắng Singapore 2026, đã trả
         PaymentException e = assertThrows(PaymentException.class,
-                () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(3)));
+                () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(832)));
         assertTrue(e.getMessage().contains("Max Verstappen"));
     }
 
     @Test
     void missingDefaultBankAccount() {
-        // Lê Minh Cường có 2 tài khoản ngân hàng nhưng cả 2 đều là FALSE (không có tài khoản mặc định)
+        // Lawson có 2 tài khoản nhưng không tài khoản nào là mặc định
         PaymentException e = assertThrows(PaymentException.class,
-                () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(1, 8)));
-        assertEquals("Thiếu thông tin nhận thưởng: Lê Minh Cường", e.getMessage());
+                () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(854, 862)));
+        assertEquals("Thiếu thông tin nhận thưởng: Liam Lawson", e.getMessage());
+    }
+
+    @Test
+    void noBankAccount() {
+        PaymentException e = assertThrows(PaymentException.class,
+                () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(859)));
+        assertEquals("Thiếu thông tin nhận thưởng: Isack Hadjar", e.getMessage());
+    }
+
+    @Test
+    void lockedDefaultBankAccount() {
+        PaymentException e = assertThrows(PaymentException.class,
+                () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(863)));
+        assertEquals("Thiếu thông tin nhận thưởng: Pierre Gasly", e.getMessage());
     }
 
     @Test
     void multipleBankAccountsOnlyDefaultUsed() {
-        // Trần Văn B có 3 tài khoản ngân hàng (1 VCB mặc định, 2 tài khoản phụ TCB & MB)
-        // Hệ thống kiểm tra đúng 1 tài khoản mặc định và thanh toán thành công
-        RegisteredReceipt r = em.find(RegisteredReceipt.class, 1);
+        // Lando Norris có nhiều tài khoản, đúng 1 tài khoản mặc định
+        RegisteredReceipt r = em.find(RegisteredReceipt.class, 858);
         com.ngtukien.f1.model.Driver driver = r.getRegisteredDriver().getDriver();
-        assertEquals(3, driver.getListBankAccount().size());
+        assertTrue(driver.getListBankAccount().size() >= 2);
         assertEquals(1, driver.getListBankAccount().stream().filter(a -> Boolean.TRUE.equals(a.getIsDefault())).count());
 
-        RewardInvoice inv = rewardInvoiceDAO.createRewardInvoice(invoiceOf(1));
+        RewardInvoice inv = rewardInvoiceDAO.createRewardInvoice(invoiceOf(858));
         assertEquals("Thanh toán thành công", inv.getStatus());
     }
 
-
     @Test
     void zeroReward() {
-        assertThrows(PaymentException.class, () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(9)));
+        assertThrows(PaymentException.class, () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(864))); // hạng 11
+        assertThrows(PaymentException.class, () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(873))); // bỏ cuộc
     }
 
     @Test
@@ -97,15 +114,14 @@ class RewardInvoiceDAOTest {
 
     @Test
     void payDirectRewardSuccessEvenWithoutDefaultBankAccount() {
-        // Lê Minh Cường (receipt 8) không có tài khoản nhận thưởng mặc định
-        // Trả thưởng trực tiếp cho phép trả thành công mà không báo lỗi thiếu tài khoản
-        RewardInvoice inv = invoiceOf(8);
+        // Trả thưởng trực tiếp không cần tài khoản ngân hàng mặc định (Lawson ở US và Singapore 2026)
+        RewardInvoice inv = invoiceOf(862, 838);
         inv.setPaymentMethod("Trả thưởng trực tiếp");
         RewardInvoice saved = rewardInvoiceDAO.createRewardInvoice(inv);
         assertNotNull(saved.getId());
+        assertEquals(32_000_000, saved.getAmount()); // 8.000.000 + 24.000.000
         assertEquals("Trả thưởng trực tiếp", saved.getPaymentMethod());
         assertEquals("Thanh toán thành công", saved.getStatus());
-        assertEquals("Đã trả", em.find(RegisteredReceipt.class, 8).getPaymentStatus());
+        assertEquals("Đã trả", em.find(RegisteredReceipt.class, 862).getPaymentStatus());
     }
 }
-
