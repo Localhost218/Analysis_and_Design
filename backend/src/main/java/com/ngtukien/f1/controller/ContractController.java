@@ -31,4 +31,14 @@ public class ContractController {
         }
         return ResponseEntity.ok(contract);
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Object> getContract(@PathVariable int id) {
+        Contract contract = contractDAO.getContractById(id);
+        if (contract == null) {
+            return ApiError.of(HttpStatus.NOT_FOUND, "Không tìm thấy hợp đồng");
+        }
+        return ResponseEntity.ok(contract);
+    }
 }
+

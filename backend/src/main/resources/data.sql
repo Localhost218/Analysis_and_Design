@@ -29,7 +29,9 @@ INSERT INTO tblMember (id, username, password) VALUES
  (27, 'driver.leminhcuong', '123456'),
  (28, 'driver.russell', '123456'),
  (29, 'driver.sainz', '123456'),
- (30, 'driver.albon', '123456')
+ (30, 'driver.albon', '123456'),
+ (31, 'khachhang', '123456'),
+ (32, 'customer', 'customer@123')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO tblOrganizer (tblMemberid, fullName, address, dateOfBirth, email, tel, role) VALUES
@@ -227,7 +229,10 @@ INSERT INTO tblContract (id, barcode, createdDate, effectiveFrom, effectiveTo, v
  (2, 'C102', '2026-01-05', '2026-03-06', '2026-12-06', 300000000, 'Christian Horner', 'Nguyễn Thị B', '2026-01-08', 'Đã ký', 3, 3, 2),
  (3, 'C103', '2026-02-01', '2026-03-06', '2026-12-06', 200000000, 'Toto Wolff', 'Nguyễn Thị B', NULL, 'Chờ ký', 5, 3, 2),
  -- Hợp đồng cũ đã hết hạn từ mùa giải 2024
- (4, 'C104', '2024-01-10', '2024-03-01', '2024-12-08', 400000000, 'Lê Hồng Hà', 'Nguyễn Văn A', '2024-01-15', 'Đã ký', 9, 2, 1)
+ (4, 'C104', '2024-01-10', '2024-03-01', '2024-12-08', 400000000, 'Lê Hồng Hà', 'Nguyễn Văn A', '2024-01-15', 'Đã ký', 9, 2, 1),
+ -- Hợp đồng của Red Blue (S018 - id 4): 1 Chờ ký (2026), 1 Đã ký (2025)
+ (5, 'C105', '2026-02-15', '2026-03-08', '2026-12-06', 350000000, 'Nguyễn Văn Cường', 'Nguyễn Thị B', NULL, 'Chờ ký', 4, 3, 2),
+ (6, 'C106', '2025-02-10', '2025-03-09', '2025-12-07', 250000000, 'Nguyễn Văn Cường', 'Nguyễn Văn A', '2025-02-14', 'Đã ký', 4, 1, 1)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO tblContractTerm (id, notes, tblTermid, tblContractid) VALUES
@@ -235,7 +240,10 @@ INSERT INTO tblContractTerm (id, notes, tblTermid, tblContractid) VALUES
  (2, 'Gửi tư liệu trước ngày tổ chức chặng 14 ngày', 2, 1),
  (3, NULL, 1, 2),
  (4, NULL, 4, 3),
- (5, 'Thanh toán trọn gói đầu mùa giải 2024', 1, 4)
+ (5, 'Thanh toán trọn gói đầu mùa giải 2024', 1, 4),
+ (6, 'Thanh toán tài trợ theo tiến độ 3 đợt', 1, 5),
+ (7, 'Cung cấp banner và video trước mỗi chặng', 2, 5),
+ (8, 'Thanh toán theo từng chặng hoàn thành', 1, 6)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO tblContractBenefit (id, value, unit, notes, tblBenefitid, tblContractid) VALUES
@@ -243,7 +251,107 @@ INSERT INTO tblContractBenefit (id, value, unit, notes, tblBenefitid, tblContrac
  (2, 20, 'vé', NULL, 2, 1),
  (3, 24, 'chặng', NULL, 1, 2),
  (4, 10, 'vé', NULL, 2, 3),
- (5, 50, 'vé', 'Vé khán đài Grandstand mùa 2024', 2, 4)
+ (5, 50, 'vé', 'Vé khán đài Grandstand mùa 2024', 2, 4),
+ (6, 12, 'chặng', 'Đặt logo tại paddock', 1, 5),
+ (7, 15, 'vé', 'Vé VIP cho ban lãnh đạo', 2, 5),
+ (8, 20, 'vé', 'Vé VIP mùa 2025', 2, 6)
+ON CONFLICT DO NOTHING;
+
+-- =====================================================================
+-- ===== Bổ sung: dữ liệu bao quát các tình huống còn thiếu =====
+-- Id mới đặt sau các id đã dùng (cả dữ liệu người dùng đã tạo) để chạy được trên CSDL đang có.
+-- =====================================================================
+
+-- Tay đua mới chưa thi đấu chặng nào, chưa thuộc đội nào -> trang chủ Tay đua hiện bảng tiền thưởng trống
+INSERT INTO tblMember (id, username, password) VALUES
+ (33, 'driver.doanminhkhoa', '123456')
+ON CONFLICT DO NOTHING;
+INSERT INTO tblDriver (tblMemberid, fullName, dateOfBirth, nationality, racingNumber) VALUES
+ (33, 'Đoàn Minh Khoa', '2004-07-15', 'Việt Nam', 88)
+ON CONFLICT DO NOTHING;
+
+-- Ngân hàng ngừng hoạt động: không hiện trong ô chọn ngân hàng khi thêm / sửa tài khoản
+INSERT INTO tblBank (id, bankCode, name, status) VALUES
+ (7, 'SCB', 'Sài Gòn (SCB)', 'Ngừng hoạt động')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO tblBankAccount (id, accountNumber, accountHolder, isDefault, status, tblDriverMemberid, tblBankid) VALUES
+ -- George Russell (28) có thêm TK phụ ở ngân hàng đã ngừng hoạt động
+ (19, '7701234567', 'GEORGE RUSSELL', FALSE, 'Hoạt động', 28, 7),
+ -- Đoàn Minh Khoa (33): 1 tài khoản mặc định duy nhất (không xóa được, không bỏ mặc định được)
+ (20, '8801234567', 'DOAN MINH KHOA', TRUE, 'Hoạt động', 33, 6)
+ON CONFLICT DO NOTHING;
+
+-- Mùa giải tương lai chưa có chặng đua nào
+INSERT INTO tblSeason (id, name, year, startDate, endDate) VALUES
+ (5, 'F1 FIA 2028', 2028, '2028-03-03', '2028-12-03')
+ON CONFLICT DO NOTHING;
+
+-- Thêm chặng đã kết thúc của mùa 2026:
+--  C02 Saudi Arabia: đủ dữ liệu, có kết quả cho các tay đua ở mọi ngoại lệ tài khoản (Sainz TK mặc định bị khóa,
+--                    Albon chưa có TK, Cường không có TK mặc định), có kết quả đã trả trực tiếp, bỏ cuộc, bị truất quyền
+--  C03 Australian:   có mức thưởng nhưng CHƯA có kết quả -> ngoại lệ thiếu dữ liệu kết quả
+--  C04 Japan:        có kết quả nhưng CHƯA có mức thưởng -> ngoại lệ thiếu mức thưởng cơ sở
+--  C05 Miami:        mức thưởng khác (80 triệu), một kết quả đã trả chung hóa đơn với C02
+INSERT INTO tblRace (id, name, lapCount, location, startTime, endTime, description, basePrize, tblSeasonid) VALUES
+ (8, 'C02 – Saudi Arabia', 50, 'Jeddah, Ả Rập Xê Út', '2026-03-22 19:00:00', '2026-03-22 21:00:00', 'Đường phố Jeddah', 100000000, 3),
+ (9, 'C03 – Australian', 58, 'Melbourne, Úc', '2026-04-05 13:00:00', '2026-04-05 15:00:00', 'Albert Park', 100000000, 3),
+ (10, 'C04 – Japan', 53, 'Suzuka, Nhật Bản', '2026-04-19 14:00:00', '2026-04-19 16:00:00', 'Suzuka Circuit', NULL, 3),
+ (11, 'C05 – Miami', 57, 'Miami, Hoa Kỳ', '2026-05-03 20:00:00', '2026-05-03 22:00:00', 'Miami International Autodrome', 80000000, 3)
+ON CONFLICT DO NOTHING;
+
+-- HD012: Trả thưởng trực tiếp (không cần tài khoản ngân hàng)
+-- HD013: một hóa đơn gộp nhiều chặng (C02 + C05 2026) của cùng tay đua
+INSERT INTO tblRewardInvoice (id, barcode, paidAt, amount, paymentMethod, status, tblOrganizerMemberid) VALUES
+ (12, 'HD012', '2026-03-24 09:30:00', 24000000, 'Trả thưởng trực tiếp', 'Thanh toán thành công', 2),
+ (13, 'HD013', '2026-05-05 10:15:00', 180000000, 'Chuyển khoản online', 'Thanh toán thành công', 1)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO tblRegisteredReceipt (id, rank, score, finishedTime, completedLap, reward, completedStatus, tblRaceid, tblRegisteredDriverid, tblOrganizerMemberid, tblRewardInvoiceid) VALUES
+ -- C02 – Saudi Arabia 2026 (BTC Nguyễn Thị B đưa vào)
+ (29, 1, 25, '2026-03-22 20:21:10', 50, 100000000, 'Hoàn thành', 8, 6, 2, 13),   -- Hamilton: đã trả (HD013)
+ (30, 2, 18, '2026-03-22 20:21:14', 50, 0, 'Hoàn thành', 8, 9, 2, NULL),          -- Russell: trả online được
+ (31, 3, 15, '2026-03-22 20:21:30', 50, 0, 'Hoàn thành', 8, 10, 2, NULL),         -- Sainz: TK mặc định bị khóa -> online lỗi, trực tiếp được
+ (32, 4, 12, '2026-03-22 20:21:41', 50, 0, 'Hoàn thành', 8, 11, 2, NULL),         -- Albon: chưa có TK -> online lỗi, trực tiếp được
+ (33, 5, 10, '2026-03-22 20:21:55', 50, 0, 'Hoàn thành', 8, 8, 2, NULL),          -- Cường: không có TK mặc định -> online lỗi
+ (34, 6, 8, '2026-03-22 20:22:03', 50, 0, 'Hoàn thành', 8, 3, 2, NULL),
+ (35, 7, 6, '2026-03-22 20:22:20', 50, 24000000, 'Hoàn thành', 8, 5, 2, 12),      -- Leclerc: đã trả trực tiếp (HD012)
+ (36, 8, 4, '2026-03-22 20:22:41', 49, 0, 'Hoàn thành', 8, 1, 2, NULL),
+ (37, NULL, 0, NULL, 41, 0, 'Bỏ cuộc', 8, 4, 2, NULL),
+ (38, NULL, 0, NULL, 50, 0, 'Bị truất quyền', 8, 7, 2, NULL),
+
+ -- C04 – Japan 2026: có kết quả, chưa có mức thưởng
+ (39, 1, 25, '2026-04-19 15:28:00', 53, 0, 'Hoàn thành', 10, 3, 1, NULL),
+ (40, 2, 18, '2026-04-19 15:28:09', 53, 0, 'Hoàn thành', 10, 4, 1, NULL),
+
+ -- C05 – Miami 2026
+ (41, 1, 25, '2026-05-03 21:30:00', 57, 80000000, 'Hoàn thành', 11, 6, 1, 13),   -- Hamilton: đã trả (HD013)
+ (42, 2, 18, '2026-05-03 21:30:06', 57, 0, 'Hoàn thành', 11, 3, 1, NULL),
+ (43, 3, 15, '2026-05-03 21:30:12', 57, 0, 'Hoàn thành', 11, 2, 1, NULL)
+ON CONFLICT DO NOTHING;
+
+-- Điều khoản & quyền lợi ngừng hoạt động: không hiện trong gợi ý khi soạn hợp đồng, vẫn hiện trong hợp đồng cũ
+INSERT INTO tblTerm (id, title, details, punishment, type, status) VALUES
+ (6, 'Độc quyền ngành hàng', 'Ban tổ chức không ký với nhà tài trợ khác cùng ngành hàng trong mùa giải', 'Hoàn trả 20% giá trị hợp đồng', 'Pháp lý', 'Ngừng hoạt động')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO tblBenefit (id, title, description, type, status) VALUES
+ (6, 'Quảng cáo trên vé giấy', 'In logo nhà tài trợ trên vé giấy (đã chuyển sang vé điện tử)', 'Quảng bá thương hiệu', 'Ngừng hoạt động')
+ON CONFLICT DO NOTHING;
+
+-- Nhà tài trợ "Ngừng hợp tác" (Oracle) có hợp đồng cũ: không ký mới được, không xóa được
+INSERT INTO tblContract (id, barcode, createdDate, effectiveFrom, effectiveTo, value, sponsorRepresentative, organizerRepresentative, signedDate, status, tblSponsorMemberid, tblSeasonid, tblOrganizerMemberid) VALUES
+ (7, 'C107', '2024-01-20', '2024-03-01', '2024-12-08', 600000000, 'Safra Catz', 'Nguyễn Văn A', '2024-01-25', 'Đã ký', 6, 2, 1)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO tblContractTerm (id, notes, tblTermid, tblContractid) VALUES
+ (9, 'Độc quyền ngành công nghệ đám mây', 6, 7),
+ (10, NULL, 4, 7)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO tblContractBenefit (id, value, unit, notes, tblBenefitid, tblContractid) VALUES
+ (9, 24, 'chặng', NULL, 6, 7),
+ (10, 1, 'vị trí', 'Cánh gió sau', 4, 7)
 ON CONFLICT DO NOTHING;
 
 -- ===== Đồng bộ sequence sau khi chèn id cố định =====

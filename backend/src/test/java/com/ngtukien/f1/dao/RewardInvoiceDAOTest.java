@@ -1,5 +1,6 @@
 package com.ngtukien.f1.dao;
 
+import com.ngtukien.f1.exception.PaymentException;
 import com.ngtukien.f1.model.Organizer;
 import com.ngtukien.f1.model.RegisteredReceipt;
 import com.ngtukien.f1.model.RewardInvoice;
@@ -93,4 +94,18 @@ class RewardInvoiceDAOTest {
     void emptyPaymentTable() {
         assertThrows(PaymentException.class, () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf()));
     }
+
+    @Test
+    void payDirectRewardSuccessEvenWithoutDefaultBankAccount() {
+        // Lê Minh Cường (receipt 8) không có tài khoản nhận thưởng mặc định
+        // Trả thưởng trực tiếp cho phép trả thành công mà không báo lỗi thiếu tài khoản
+        RewardInvoice inv = invoiceOf(8);
+        inv.setPaymentMethod("Trả thưởng trực tiếp");
+        RewardInvoice saved = rewardInvoiceDAO.createRewardInvoice(inv);
+        assertNotNull(saved.getId());
+        assertEquals("Trả thưởng trực tiếp", saved.getPaymentMethod());
+        assertEquals("Thanh toán thành công", saved.getStatus());
+        assertEquals("Đã trả", em.find(RegisteredReceipt.class, 8).getPaymentStatus());
+    }
 }
+

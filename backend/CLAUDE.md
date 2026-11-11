@@ -18,7 +18,7 @@
 ## Lệnh
 ```bash
 ./mvnw spring-boot:run   # chạy, cổng 8080 (cần container database đang chạy)
-./mvnw test              # 33 test, cần container database đang chạy
+./mvnw test              # 61 test, cần container database đang chạy
 ./mvnw package           # build target/app.jar
 ```
 Docker: `Dockerfile` build bằng maven:3.9.9-eclipse-temurin-21 (`-DskipTests`, vì test cần DB) rồi chạy bằng eclipse-temurin:21-jre-alpine với `-Duser.timezone=Asia/Ho_Chi_Minh`.
@@ -28,8 +28,9 @@ Docker: `Dockerfile` build bằng maven:3.9.9-eclipse-temurin-21 (`-DskipTests`,
 src/main/java/com/ngtukien/f1/
   F1Application.java   main + bean Hibernate6Module
   model/        17 entity (liệt kê bên dưới)
-  dao/          11 lớp DAO (liệt kê bên dưới) + PaymentException
-  controller/   9 @RestController (Organizer, Sponsor, Season, Term, Benefit, Contract, Race, Driver, RewardInvoice)
+  dao/          11 lớp DAO (liệt kê bên dưới)
+  exception/    PaymentException, SponsorException, DriverException (ngoại lệ nghiệp vụ)
+  controller/   10 @RestController (Organizer, Sponsor, Season, Term, Benefit, Contract, Race, Driver, RewardInvoice, Auth)
                 + ApiError (định dạng lỗi { message }); controller chỉ gọi DAO và trả kết quả/lỗi
 src/test/java/com/ngtukien/f1/
   dao/          *DAOTest: kịch bản chuẩn + ngoại lệ theo báo cáo
@@ -96,11 +97,11 @@ Kiểu trong thiết kế ↔ Java: `int`→`int`/`Integer`, `String`→`String`
 - rank: int, score: int, finishedTime: LocalDateTime, completedLap: int, reward: int
 - completedStatus: String
 - **Không có cột paymentStatus**: `rewardInvoice != null` nghĩa là `Đã trả`, ngược lại là `Chưa trả` (dùng `@Transient getPaymentStatus()` để trả ra JSON)
-- organizer: Organizer, rewardInvoice: RewardInvoice (null khi chưa trả)
+- organizer: Organizer (người đưa tay đua này vào/đăng ký kết quả thi đấu, **không phải người trả thưởng**; người trả thưởng lưu ở `RewardInvoice.organizer`), rewardInvoice: RewardInvoice (null khi chưa trả)
 
 **RewardInvoice**
 - id: int, barcode: String, paidAt: LocalDateTime, amount: int, paymentMethod: String, status: String
-- organizer: Organizer, listRegisteredReceipt: List\<RegisteredReceipt\>
+- organizer: Organizer (thành viên BTC thực hiện thanh toán hóa đơn), listRegisteredReceipt: List\<RegisteredReceipt\>
 
 **Bank**
 - id: int, bankCode: String, name: String, status: String
@@ -129,8 +130,8 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 | tblBenefit | id, title, description, type, status | |
 | tblContractBenefit | id, value, unit, notes, tblBenefitid, tblContractid | → tblBenefit, tblContract |
 | tblRegisteredDriver | id, tblTeamMemberid, tblDriverMemberid | → tblTeam, tblDriver |
-| tblRegisteredReceipt | id, rank, score, finishedTime TIMESTAMP, completedLap, reward, completedStatus, tblRaceid, tblRegisteredDriverid, tblOrganizerMemberid (NULL), tblRewardInvoiceid (NULL) | → tblRace, tblRegisteredDriver, tblOrganizer, tblRewardInvoice |
-| tblRewardInvoice | id, barcode, paidAt TIMESTAMP, amount, paymentMethod, status, tblOrganizerMemberid | → tblOrganizer |
+| tblRegisteredReceipt | id, rank, score, finishedTime TIMESTAMP, completedLap, reward, completedStatus, tblRaceid, tblRegisteredDriverid, tblOrganizerMemberid (người đưa tay đua vào), tblRewardInvoiceid (NULL khi chưa trả) | → tblRace, tblRegisteredDriver, tblOrganizer, tblRewardInvoice |
+| tblRewardInvoice | id, barcode, paidAt TIMESTAMP, amount, paymentMethod, status, tblOrganizerMemberid (người thực hiện trả thưởng) | → tblOrganizer |
 | tblBank | id, bankCode, name, status | |
 | tblBankAccount | id, accountNumber, accountHolder, isDefault BOOLEAN, status, tblDriverMemberid, tblBankid | → tblDriver, tblBank |
 
@@ -138,7 +139,7 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 - Bảng con của Member: `@PrimaryKeyJoinColumn(name = "tblMemberid")`
 - `@ManyToOne` (mặc định EAGER) dùng `@JoinColumn(name = "<cột khóa ngoại>")`
 - Danh sách con `@OneToMany` (LAZY). DAO nạp đúng danh sách báo cáo ghi "kèm ..." bằng `Hibernate.initialize(...)`; danh sách không nạp ra `null` trong JSON (Hibernate6Module)
-- Danh sách **không** có thuộc tính ngược ở lớp con (theo Class Diagram) dùng `@OneToMany @JoinColumn(name = "<FK>")` một chiều: `Contract.listContractTerm`, `Contract.listContractBenefit` (cascade ALL), `Driver.listBankAccount`
+- Danh sách **không** có thuộc tính ngược ở lớp con (theo Class Diagram) dùng `@OneToMany @JoinColumn(name = "<FK>")` một chiều: `Contract.listContractTerm`, `Contract.listContractBenefit` (cascade ALL), `Driver.listBankAccount` (`nullable = false` vì `tblDriverMemberid` NOT NULL, để Hibernate ghi FK ngay trong câu INSERT)
 - `Sponsor.listContract` có `@SQLRestriction("status = 'Đã ký'")`, tức chỉ gồm hợp đồng đã ký
 - `spring.jpa.hibernate.ddl-auto=validate`, `spring.jpa.open-in-view=false`
 - Chống vòng lặp JSON: `@JsonIgnoreProperties("<thuộc tính trỏ ngược>")` ở cả hai phía quan hệ (vd: `Race.listRegisteredReceipt` bỏ `race`). `password` để `@JsonProperty(access = WRITE_ONLY)`
@@ -154,7 +155,7 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 | RegisteredReceipt.completedStatus | `Hoàn thành`, `Bỏ cuộc`, `Tai nạn`, `Không xuất phát`, `Không được phân hạng`, `Bị loại` |
 | (trạng thái trả thưởng, tính ra) | `Chưa trả` khi tblRewardInvoiceid NULL, `Đã trả` khi khác NULL |
 | RewardInvoice.status | `Thanh toán thành công`, `Thanh toán thất bại` |
-| RewardInvoice.paymentMethod | `Chuyển khoản online` |
+| RewardInvoice.paymentMethod | `Chuyển khoản online`, `Trả thưởng trực tiếp` |
 | Term.status, Benefit.status, Bank.status, BankAccount.status | `Hoạt động`, `Ngừng hoạt động` |
 
 ---
@@ -165,12 +166,18 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 | Lớp | Kế thừa | Phương thức (input → output) | Ghi chú |
 |---|---|---|---|
 | MemberDAO | DAO | `checkLogin(Member) → Member` | so khớp username + password |
-| OrganizerDAO | MemberDAO | `checkLogin(Member) → Organizer` | null nếu sai |
-| SponsorDAO | MemberDAO | `searchByName(String sponsorName) → List<Sponsor>` | `LIKE %name%`, không phân biệt hoa thường |
+| | | `checkLoginUniversal(String identifier, String password) → Map<String, Object>` | hỗ trợ đăng nhập 4 vai trò: `ORGANIZER`, `SPONSOR` (qua username hoặc `taxCode`), `DRIVER`, `CUSTOMER` |
+| OrganizerDAO | MemberDAO | `checkLogin(Member) → Organizer` | null nếu sai hoặc không phải Ban tổ chức |
+| SponsorDAO | MemberDAO | `checkLogin(Member) → Sponsor` | null nếu sai; hỗ trợ đăng nhập bằng `username` hoặc `taxCode` |
+| | | `searchByName(String sponsorName) → List<Sponsor>` | `LIKE %name%`, không phân biệt hoa thường |
 | | | `getSponsorInfo(int sponsorId) → Sponsor` | kèm listContract chỉ gồm hợp đồng `Đã ký` (kèm season) |
 | | | `createSponsor(Sponsor) → boolean` | false nếu thiếu thông tin, sai định dạng (MST 10/13 số, SĐT `0` + 9–10 số, email) hoặc trùng `taxCode`; tạo cả dòng tblMember với username = password = MST, status `Đang hợp tác` |
+| | | `updateSponsor(Sponsor) → Sponsor` | cập nhật thông tin NTT; ném `SponsorException` nếu trùng MST với NTT khác hoặc không tìm thấy |
+| | | `deleteSponsor(int sponsorId) → boolean` | xóa NTT; ném `SponsorException` nếu NTT đã có hợp đồng tài trợ ("Không thể xóa nhà tài trợ đã có hợp đồng tài trợ") |
+| | | `getContractsBySponsor(int sponsorId) → List<Contract>` | trả về danh sách tất cả hợp đồng của NTT (gồm cả `Chờ ký` và `Đã ký`), kèm mùa giải, điều khoản, quyền lợi |
 | ContractDAO | DAO | `createContract(Contract) → boolean` | gán createdDate = hôm nay, status = `Chờ ký`, barcode = `C` + (100 + id); lưu kèm listContractTerm, listContractBenefit; false nếu không hợp lệ hoặc trùng điều khoản/quyền lợi |
 | | | `updateSignedStatus(int contractId) → Contract` | chỉ khi đang `Chờ ký`: signedDate = hôm nay, status = `Đã ký` |
+| | | `getContractById(int contractId) → Contract` | lấy chi tiết hợp đồng kèm mùa giải, nhà tài trợ, các điều khoản (có hình phạt) và quyền lợi |
 | SeasonDAO | DAO | `searchByName(String seasonName) → List<Season>` | |
 | | | `createSeason(Season) → boolean` | false nếu trùng name + year |
 | | | `getSeasonInfo(int seasonId) → Season` | kèm listRace (`JOIN FETCH`) |
@@ -179,11 +186,19 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 | BenefitDAO | DAO | `searchByTitle(String benefitTitle) → List<Benefit>` | |
 | | | `createBenefit(Benefit) → boolean` | false nếu trùng title |
 | RaceDAO | DAO | `getRaceInfo(int raceId) → Race` | kèm listRegisteredReceipt → registeredDriver → driver, team; kết quả có tblRewardInvoiceid khác NULL là đã trả |
-| DriverDAO | MemberDAO | `getDriverInfo(int driverId) → Driver` | kèm listBankAccount → bank |
-| RewardInvoiceDAO | DAO | `createRewardInvoice(RewardInvoice) → RewardInvoice` | **một giao dịch**: kiểm tra mọi kết quả trong listRegisteredReceipt còn `Chưa trả`, reward > 0, tay đua có tài khoản mặc định còn hoạt động; gán paidAt = now, barcode = `HD%03d`, amount = tổng reward, status = `Thanh toán thành công`; lưu hóa đơn rồi gán tblRewardInvoiceid + organizer cho từng kết quả. Không thỏa thì ném `PaymentException` và rollback toàn bộ |
+| DriverDAO | MemberDAO | `checkLogin(Member) → Driver` | null nếu sai hoặc không phải Tay đua |
+| | | `getDriverInfo(int driverId) → Driver` | kèm listBankAccount → bank |
+| | | `getRewardsByDriver(int driverId) → List<RegisteredReceipt>` | danh sách toàn bộ kết quả thi đấu, số tiền thưởng và trạng thái trả thưởng của tay đua theo từng chặng, kèm `rewardInvoice` |
+| | | `updateDriverInfo(int driverId, Driver) → Driver` | tay đua tự sửa fullName, dateOfBirth, nationality (bỏ qua username, password, racingNumber); ném `DriverException` nếu thiếu tên / quốc tịch hoặc dưới 16 tuổi; null nếu không có tay đua |
+| | | `getAllBanks() → List<Bank>` | ngân hàng `Hoạt động`, sắp theo tên |
+| | | `addBankAccount(int driverId, BankAccount) → Driver` | kiểm tra ngân hàng, số TK 6–19 chữ số, chủ TK (lưu in hoa), không trùng ngân hàng + số TK; status = `Hoạt động`; là mặc định nếu chọn hoặc tay đua chưa có tài khoản mặc định |
+| | | `updateBankAccount(int driverId, int accountId, BankAccount) → Driver` | như trên; không cho bỏ mặc định của tài khoản mặc định; đặt mặc định thì bỏ mặc định cũ (flush trước vì unique index) |
+| | | `deleteBankAccount(int driverId, int accountId) → Driver` | không cho xóa tài khoản mặc định. Ba hàm tài khoản trả null nếu tài khoản không thuộc tay đua đó |
+| RewardInvoiceDAO | DAO | `createRewardInvoice(RewardInvoice) → RewardInvoice` | **một giao dịch**: kiểm tra mọi kết quả trong listRegisteredReceipt còn `Chưa trả`, reward > 0; nếu `paymentMethod = "Chuyển khoản online"` thì yêu cầu tay đua có tài khoản mặc định còn hoạt động (nếu `paymentMethod = "Trả thưởng trực tiếp"` thì bỏ qua kiểm tra tài khoản nhận thưởng); gán paidAt = now, barcode = `HD%03d`, amount = tổng reward, status = `Thanh toán thành công`; lưu hóa đơn rồi gán tblRewardInvoiceid + organizer cho từng kết quả. Không thỏa thì ném `PaymentException` và rollback toàn bộ |
+| | | `getInvoiceById(int id) → RewardInvoice` | chi tiết hóa đơn kèm danh sách các khoản trả thưởng, tay đua và chặng đua |
 
-- Không có `RegisteredReceiptDAO`, và Sponsor/Driver không có `checkLogin` (báo cáo tổng hợp không có).
-- DAO **không** được ném `IllegalStateException`/`IllegalArgumentException` cho lỗi nghiệp vụ, vì `@Repository` sẽ bọc chúng thành `InvalidDataAccessApiUsageException` (lỗi 500). Dùng exception riêng như `PaymentException`.
+- Không có `RegisteredReceiptDAO`.
+- DAO **không** được ném `IllegalStateException`/`IllegalArgumentException` cho lỗi nghiệp vụ, vì `@Repository` sẽ bọc chúng thành `InvalidDataAccessApiUsageException` (lỗi 500). Dùng exception riêng trong package `exception/` như `PaymentException`, `SponsorException`, `DriverException`.
 - Tính hệ số xếp hạng nằm trong `RaceDAO.calculateReward` (static, có test riêng).
 
 ---
@@ -205,10 +220,16 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 ## API (REST, JSON, tiền tố `/api`)
 | Method | Path | Body / Query | DAO | Lỗi |
 |---|---|---|---|---|
+| POST | /api/auth/login | `{username, password}` | AuthController phối hợp các DAO | 401 "Tên đăng nhập hoặc mật khẩu không chính xác" (trả role: ORGANIZER, SPONSOR, DRIVER, CUSTOMER + thông tin user) |
 | POST | /api/organizers/login | `{username, password}` | OrganizerDAO.checkLogin | 401 "Tên đăng nhập hoặc mật khẩu không chính xác" |
+| POST | /api/sponsors/login | `{username, password}` | SponsorDAO.checkLogin | 401 "Tên đăng nhập hoặc mật khẩu không chính xác" (hỗ trợ username hoặc taxCode) |
+| POST | /api/drivers/login | `{username, password}` | DriverDAO.checkLogin | 401 "Tên đăng nhập hoặc mật khẩu không chính xác" |
 | GET | /api/sponsors | `?name=` | SponsorDAO.searchByName | (trả [] khi không có) |
 | POST | /api/sponsors | Sponsor | SponsorDAO.createSponsor | 409 "Thông tin nhà tài trợ không hợp lệ hoặc mã số thuế đã tồn tại" |
 | GET | /api/sponsors/{id} | | SponsorDAO.getSponsorInfo | 404 |
+| PUT | /api/sponsors/{id} | Sponsor | SponsorDAO.updateSponsor | 400 "Thông tin không hợp lệ" / 409 "Mã số thuế đã tồn tại" |
+| DELETE | /api/sponsors/{id} | | SponsorDAO.deleteSponsor | 400 "Không thể xóa nhà tài trợ đã có hợp đồng tài trợ" / 404 |
+| GET | /api/sponsors/{id}/contracts | | SponsorDAO.getContractsBySponsor | 404 (trả danh sách tất cả hợp đồng: cả Chờ ký và Đã ký) |
 | GET | /api/seasons | `?name=` | SeasonDAO.searchByName | |
 | POST | /api/seasons | Season | SeasonDAO.createSeason | 409 "Thông tin mùa giải không hợp lệ hoặc mùa giải đã tồn tại" |
 | GET | /api/seasons/{id} | | SeasonDAO.getSeasonInfo | 404 |
@@ -218,21 +239,50 @@ Kiểu: `id` là `SERIAL PRIMARY KEY`; chuỗi là `VARCHAR(255)`; số là `INT
 | POST | /api/benefits | Benefit | BenefitDAO.createBenefit | 409 "Thông tin quyền lợi không hợp lệ hoặc quyền lợi đã tồn tại" |
 | POST | /api/contracts | Contract (kèm listContractTerm, listContractBenefit) | ContractDAO.createContract | 400 "Thông tin hợp đồng không hợp lệ" |
 | PUT | /api/contracts/{id}/signed | | ContractDAO.updateSignedStatus | 409 "Hợp đồng không tồn tại hoặc không ở trạng thái Chờ ký" |
+| GET | /api/contracts/{id} | | ContractDAO.getContractById | 404 (chi tiết hợp đồng kèm terms & benefits) |
 | GET | /api/races/{id} | | RaceDAO.getRaceInfo | 404 |
 | GET | /api/drivers/{id} | | DriverDAO.getDriverInfo | 404 |
-| POST | /api/invoices | `{organizer:{id}, paymentMethod, listRegisteredReceipt:[{id}, ...]}` | RewardInvoiceDAO.createRewardInvoice | 409 "Thanh toán không thành công: <lý do>" (vd: "Thiếu thông tin nhận thưởng: Lê Minh Cường") |
+| GET | /api/drivers/{id}/rewards | | DriverDAO.getRewardsByDriver | 404 (danh sách kết quả & tiền thưởng của tay đua) |
+| PUT | /api/drivers/{id} | `{fullName, dateOfBirth, nationality}` | DriverDAO.updateDriverInfo | 400 `DriverException`, 404 |
+| GET | /api/drivers/banks | | DriverDAO.getAllBanks | |
+| POST | /api/drivers/{id}/bank-accounts | `{bank:{id}, accountNumber, accountHolder, isDefault}` | DriverDAO.addBankAccount | 400 `DriverException`, 404 (trả Driver kèm listBankAccount) |
+| PUT | /api/drivers/{id}/bank-accounts/{accountId} | như trên | DriverDAO.updateBankAccount | 400, 404 |
+| DELETE | /api/drivers/{id}/bank-accounts/{accountId} | | DriverDAO.deleteBankAccount | 400, 404 |
+| POST | /api/invoices | `{organizer:{id}, paymentMethod, listRegisteredReceipt:[{id}, ...]}` | RewardInvoiceDAO.createRewardInvoice | 409 "Thanh toán không thành công: <lý do>" (hỗ trợ online và trực tiếp) |
+| GET | /api/invoices/{id} | | RewardInvoiceDAO.getInvoiceById | 404 (chi tiết hóa đơn kèm receipts) |
 
 - Thành công: trả entity/list trực tiếp (POST tạo mới trả 201 kèm bản ghi có id). Lỗi: `{ "message": "<tiếng Việt>" }`.
 - Hợp đồng hợp lệ khi: có sponsor đang hợp tác (`status = 'Đang hợp tác'`), season, organizer, `value > 0`, `effectiveFrom < effectiveTo`, có cả hai người đại diện, có ít nhất một điều khoản (`listContractTerm` không rỗng), có ít nhất một quyền lợi (`listContractBenefit` không rỗng), không trùng lặp điều khoản hay quyền lợi.
 - Xem chi tiết bảng ma trận kịch bản ngoại lệ đầy đủ tại `CLAUDE.md` ở thư mục gốc.
 
 ## Dữ liệu mẫu (`data.sql`)
-- Organizer `a` / `a@123` (Nguyễn Văn A) và `b` / `b@123` (Nguyễn Thị B)
-- Sponsor (id 3–7): Red Bull, **Red Blue** (MST 0123456789, "Truyền thông và quảng cáo", 18 Nguyễn Trãi, Hà Nội, chưa có hợp đồng), Mercedes-AMG Petronas (chỉ có hợp đồng `Chờ ký`), Oracle (`Ngừng hợp tác`), Heineken. Mã hiển thị = `S` + id 3 chữ số
-- Season: F1 FIA 2025 (id 1), F1 FIA 2024 (id 2), **F1 FIA 2026** (id 3, cho kịch bản ký hợp đồng), F1 FIA 2027 (id 4, chưa có chặng nào kết thúc)
-- Race (tên dạng "C03 – Australian"): 1 C01 – Bahrain 2025 (**đồng hạng 2**: Leclerc, Norris; Russell `Không xuất phát`), 2 C02 – Saudi Arabia 2025 (**chưa có basePrize, chưa có kết quả**), 3 **C03 – Australian 2025** (100.000.000; Max Verstappen **đã trả** qua hóa đơn HD001; Piastri `Bỏ cuộc`), 4 **C24 – Abu Dhabi 2024** (120.000.000; Norris hạng 2 → 86.400.000), 5 C01 – Bahrain 2026, 6–7 chưa diễn ra
-- Tay đua **Lê Minh Cường** (#27) không có tài khoản mặc định, dùng để thử ngoại lệ "Thiếu thông tin nhận thưởng"
-- 4 Term, 4 Benefit đúng tên trong kịch bản ("Thanh toán tài trợ theo chặng", "Cấp vé VIP theo chặng"...); 3 hợp đồng mẫu C101–C103
+Id cố định + `ON CONFLICT DO NOTHING`: hàng đã có thì bỏ qua (sửa một hàng cũ trong file **không** cập nhật CSDL đang chạy). Thêm dữ liệu mới thì dùng id lớn hơn id lớn nhất đang có trong CSDL. Test chạy trên CSDL thật nên không giả định trạng thái người dùng có thể đổi trên giao diện (vd tài khoản mặc định), mà đọc lại từ DAO.
+
+- **Organizer**: `a` / `a@123` (Nguyễn Văn A, id 1), `b` / `b@123` (Nguyễn Thị B, id 2)
+- **Sponsor** (mã hiển thị `S` + id 3 chữ số; mật khẩu `<username>@123`):
+  - Red Bull (3): 2 hợp đồng đã ký (C101 2025, C102 2026)
+  - **Red Blue** (4, MST 0123456789): 1 `Chờ ký` (C105 2026), 1 `Đã ký` (C106 2025)
+  - Mercedes-AMG Petronas (5): chỉ có hợp đồng `Chờ ký` (C103), chi tiết NTT hiện "Chưa có"
+  - Oracle (6): `Ngừng hợp tác`, có hợp đồng cũ C107 (2024) → không ký mới được, không xóa được
+  - Heineken (7), Honda Racing (8): chưa có hợp đồng nào → xóa được
+  - Vietnam Airlines (9): hợp đồng 2024 đã hết hạn (C104)
+- **Season**: 2025 (1), 2024 (2), **2026** (3), 2027 (4, chặng chưa diễn ra), 2028 (5, chưa có chặng nào)
+- **Race** (tên dạng "C03 – Australian"):
+  - 2025: 1 C01 Bahrain (**đồng hạng 2** Leclerc / Norris, Russell `Không xuất phát`), 2 C02 Saudi Arabia (**chưa có basePrize, chưa có kết quả**), 3 C03 Australian (Verstappen **đã trả** HD001, Piastri `Bỏ cuộc`)
+  - 2024: 4 C24 Abu Dhabi (Hamilton `Tai nạn`)
+  - 2026: 5 C01 Bahrain (chưa trả); **8 C02 Saudi Arabia** (đủ mọi ngoại lệ tài khoản, xem dưới; Leclerc đã trả trực tiếp HD012; Norris `Bỏ cuộc`, Piastri `Bị truất quyền`); 9 C03 Australian (**có basePrize, chưa có kết quả**); 10 C04 Japan (**có kết quả, chưa có basePrize**); 11 C05 Miami (basePrize 80.000.000); 6 C24 Abu Dhabi (chưa diễn ra, hạng 11 không có thưởng)
+  - 2027: 7 C01 Bahrain (chưa diễn ra)
+- **Hóa đơn**: HD001 (online, 1 kết quả), HD002 (C24 2026), **HD012** (`Trả thưởng trực tiếp`), **HD013** (online, gộp 2 chặng C02 + C05 2026 của Hamilton)
+- **Tay đua và tài khoản ngân hàng** (mật khẩu `123456`):
+  - Trần Văn B `driver.tranvanb` (20): 3 tài khoản, 1 mặc định
+  - Verstappen (22), Norris (23), Leclerc (24): nhiều tài khoản, 1 mặc định
+  - Nguyễn Văn An (21), Hamilton (25), Piastri (26): 1 tài khoản mặc định
+  - Russell (28): thêm tài khoản ở ngân hàng `Ngừng hoạt động` (SCB, id 7, không hiện trong ô chọn ngân hàng)
+  - **Lê Minh Cường** `driver.leminhcuong` (27): nhiều tài khoản, **không có mặc định** → "Thiếu thông tin nhận thưởng"
+  - **Carlos Sainz** (29): tài khoản mặc định **bị `Tạm khóa`** → trả online lỗi, trả trực tiếp được
+  - **Alexander Albon** (30): **chưa có tài khoản** → trả online lỗi, trả trực tiếp được
+  - **Đoàn Minh Khoa** `driver.doanminhkhoa` (33): chưa thuộc đội, chưa thi đấu (bảng tiền thưởng trống), 1 tài khoản mặc định duy nhất
+- **Term / Benefit**: 5 + 5 đang hoạt động; term 6 "Độc quyền ngành hàng" và benefit 6 "Quảng cáo trên vé giấy" `Ngừng hoạt động` (không hiện trong gợi ý, vẫn hiện trong hợp đồng C107)
 
 ## Không được làm
 - Không thêm tầng service hay Spring Data repository.

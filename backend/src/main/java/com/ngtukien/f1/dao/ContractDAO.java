@@ -111,6 +111,25 @@ public class ContractDAO extends DAO {
         return contract;
     }
 
+    /** Lấy chi tiết hợp đồng kèm điều khoản, quyền lợi. */
+    public Contract getContractById(int contractId) {
+        Contract contract = em.find(Contract.class, contractId);
+        if (contract != null) {
+            org.hibernate.Hibernate.initialize(contract.getSeason());
+            org.hibernate.Hibernate.initialize(contract.getSponsor());
+            org.hibernate.Hibernate.initialize(contract.getOrganizer());
+            org.hibernate.Hibernate.initialize(contract.getListContractTerm());
+            for (ContractTerm ct : contract.getListContractTerm()) {
+                org.hibernate.Hibernate.initialize(ct.getTerm());
+            }
+            org.hibernate.Hibernate.initialize(contract.getListContractBenefit());
+            for (ContractBenefit cb : contract.getListContractBenefit()) {
+                org.hibernate.Hibernate.initialize(cb.getBenefit());
+            }
+        }
+        return contract;
+    }
+
     private <T> T find(Class<T> type, Integer id) {
         return id == null ? null : em.find(type, id);
     }

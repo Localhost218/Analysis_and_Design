@@ -17,18 +17,16 @@ Docker: `Dockerfile` build bằng node:22-alpine rồi phục vụ bằng nginx:
 ## Cấu trúc
 ```
 src/
-  pages/                 11 trang (liệt kê bên dưới)
+  pages/                 Trang chính và cổng thông tin theo vai trò (OrganizerHome, SponsorPortal, DriverPortal, Login, SponsorManagement, ContractSigning, RewardPayment) + Modal components (SponsorDetail, EditSponsor, NewSponsor, NewSeason, NewTerm, NewBenefit, Invoice, EditDriver, BankAccountForm)
   components/
-    Layout.jsx           AppShell: header tối + viền đỏ, menu chỉ gồm "Trang chủ", "Giới thiệu", "BXH"
-                         (2 mục sau chưa có trang, bấm hiện dialog "Sắp ra mắt"; KHÔNG thêm route cho chúng),
-                         tên người dùng, btnLogout. Các chức năng vào từ thẻ ở OrganizerHome, không có link riêng trên header.
+    Layout.jsx           AppShell: header tối + viền đỏ, menu cố định Trang chủ (về trang chủ theo vai trò) · Giới thiệu · BXH, badge vai trò, avatar chữ cái đầu, btnLogout.
                          PageHeader: tiêu đề trang dạng hero (banner tối, breadcrumb, tiêu đề, mô tả, nút bên phải).
                          EmptyState, initials()
     DialogProvider.jsx   hộp thoại thay window.alert / confirm (bọc ngoài App trong main.jsx)
-    Modal.jsx            cửa sổ nổi (portal vào body): đầu dạng hero tối, đóng bằng X / Hủy / Esc; size="lg" cho SponsorDetail, Invoice
-    FormModal.jsx        khung form cho 4 giao diện New* (Modal + nút Hủy / Thêm) và Field (label + ô nhập)
-    Badges.jsx           StatusBadge (màu theo trạng thái), RankBadge (huy chương hạng 1–3)
-    Icon.jsx             bộ icon SVG: <Icon name="search" />
+    Modal.jsx            cửa sổ nổi (portal vào body): đầu dạng hero tối, đóng bằng X / Hủy / Esc; size="lg" cho SponsorDetail, Invoice, ContractDetail
+    FormModal.jsx        khung form cho các giao diện New* và Edit* (Modal + nút Hủy / Thêm; form sửa truyền `submitText="Lưu thay đổi"`) và Field (label + ô nhập)
+    Badges.jsx           StatusBadge (màu theo trạng thái, gồm cả `Hoạt động`, `Tạm khóa`, `Mặc định`), RankBadge (huy chương hạng 1–3)
+    Icon.jsx             bộ icon SVG: <Icon name="search" />. Tên chưa có trong PATHS sẽ ra icon trống, nên thêm icon mới vào PATHS trước khi dùng
     SuggestInput.jsx     ô nhập có danh sách gợi ý (debounce 300 ms), dùng cho nhà tài trợ / mùa giải / điều khoản / quyền lợi
   hooks/
     useSession.js        useSession(key, initial) → [value, setValue]: state đồng bộ sessionStorage
@@ -41,16 +39,23 @@ src/
     format.js            formatDate, formatDateTime, formatMoney, sponsorCode, raceCode, seasonRaceLabel, duration, isRaceEnded
     options.js           giá trị các ô chọn (Lĩnh vực, Loại điều khoản, Loại quyền lợi)
   HTTPClient.js          lớp phụ trợ trong báo cáo: HTTPClient.fetch(method, path, body) → JSON; lỗi thì ném Error(message từ backend)
-  App.jsx                route + RequireLogin (chưa có "organizer" trong session thì về /login)
-  index.css              CSS chung, có @media print (in hợp đồng / hóa đơn)
+  App.jsx                route + RoleHome auto-routing + RequireLogin (bảo vệ các route theo phiên đăng nhập)
+  index.css              CSS chung, có @media print (in hợp đồng / hóa đơn); cuối file là phần cổng thông tin: layout-portal, profile-card, stat-card, segmented, default-account
 ```
 - Trạng thái dùng chung giữa các trang **luôn** đi qua `useSession` / `useContractDraft`, không gọi `sessionStorage` trực tiếp.
 - `useSession` ghi storage **ngay khi gọi setter** (không đợi render), vì trang thường `navigate()` ngay sau đó và trang mới đọc session lập tức.
 - Hàm thuần đặt ở `utils/`, không phải hook.
 
 ## Route và cửa sổ nổi
-- **Chỉ trang chức năng chính có route**: `/login`, `/`, `/sponsors`, `/contracts/new`, `/rewards/payment`.
-- Giao diện con mở từ trang chính (**SponsorDetail, NewSponsor, NewSeason, NewTerm, NewBenefit, Invoice**) là **cửa sổ nổi** (`Modal` / `FormModal`) render ngay trong trang chính: không thêm route, không `navigate()`. Trang chính giữ state mở/đóng và nhận kết quả qua callback (`onCreated`, `onClose`, `onBack`).
+- **Các route chính**:
+  - `/login`: Đăng nhập (hỗ trợ 4 vai trò: Ban tổ chức, Nhà tài trợ, Tay đua, Khách hàng)
+  - `/`: Trang chủ Ban tổ chức (OrganizerHome)
+  - `/sponsors`: Quản lý thông tin nhà tài trợ (Organizer: full CRUD; Customer: read-only)
+  - `/contracts/new`: Ký hợp đồng tài trợ (Organizer)
+  - `/rewards/payment`: Trả thưởng cho tay đua (Organizer: Online & Trực tiếp)
+  - `/sponsor-portal`: Cổng thông tin Nhà tài trợ (Sponsor)
+  - `/driver-portal`: Cổng thông tin Tay đua (Driver)
+- Giao diện con mở từ trang chính (**SponsorDetail, EditSponsor, NewSponsor, NewSeason, NewTerm, NewBenefit, Invoice**) là **cửa sổ nổi** (`Modal` / `FormModal`) render ngay trong trang chính: không thêm route, không `navigate()`. Trang chính giữ state mở/đóng và nhận kết quả qua callback (`onCreated`, `onUpdated`, `onClose`, `onBack`).
 - Trong modal, tên phần tử theo báo cáo đặt ở thuộc tính `name`; `id` có tiền tố tên giao diện (vd: `newTerm-txtTitle`, `sponsorDetail-btnCancel`) để không trùng `id` với trang chính.
 
 ## Quy ước chung
@@ -72,8 +77,11 @@ src/
 ## Session keys (thuộc tính ẩn trong báo cáo)
 | Key | Kiểu | Ghi bởi | Đọc bởi |
 |---|---|---|---|
-| organizer | Organizer | Login | mọi trang |
-| sponsor | Sponsor | SponsorManagement | SponsorDetail |
+| auth | `{ role, roleName, user }` | Login | App.jsx (RoleHome, Layout, Route Guard) |
+| organizer | Organizer | Login | mọi trang của Ban tổ chức |
+| sponsor | Sponsor | Login, SponsorManagement | SponsorDetail, SponsorPortal |
+| driver | Driver | Login | DriverPortal |
+| customer | Customer/Member | Login | SponsorManagement (read-only) |
 | contract | Contract đang soạn (kèm listContractTerm, listContractBenefit), qua `useContractDraft` | ContractSigning, New* | ContractSigning (giữ dữ liệu khi qua lại New*) |
 | sponsorKeyword, sponsorResults | từ khóa và kết quả tìm gần nhất | SponsorManagement | SponsorManagement (quay lại từ chi tiết vẫn còn danh sách) |
 | season | Season đang chọn (kèm listRace) | RewardPayment | RewardPayment |
@@ -87,11 +95,15 @@ src/
 ### Login.jsx — `/login` — tiêu đề "Đăng nhập"
 | Tên | Loại | Nhãn |
 |---|---|---|
-| txtUsername | input text | Tên đăng nhập: |
+| txtUsername | input text | Tên đăng nhập: (hoặc Mã số thuế đối với Nhà tài trợ) |
 | txtPassword | input password | Mật khẩu: |
 | btnLogin | button | Đăng nhập |
 
-- Gọi `POST /api/organizers/login`. Thành công: lưu `organizer`, chuyển tới `/`.
+- Gọi `POST /api/auth/login`. Thành công: lưu `auth` và đối tượng người dùng tương ứng vào session, tự động điều hướng:
+  - `ORGANIZER` → `/` (Trang chủ BTC)
+  - `SPONSOR` → `/sponsor-portal` (Cổng thông tin NTT)
+  - `DRIVER` → `/driver-portal` (Cổng thông tin Tay đua)
+  - `CUSTOMER` → `/` (RoleHome hiển thị `SponsorManagement` chỉ đọc, ẩn nút Quay lại và breadcrumb)
 - Thất bại: alert "Tên đăng nhập hoặc mật khẩu không chính xác", OK thì giữ nguyên form.
 
 ### OrganizerHome.jsx — `/` — tiêu đề "Trang chủ Ban tổ chức"
@@ -104,19 +116,24 @@ src/
 
 ---
 
-## 1. Quản lý thông tin nhà tài trợ
+## 1. Quản lý thông tin nhà tài trợ (Module 1 & Module 2)
 
-### SponsorManagement.jsx — `/sponsors` — tiêu đề "Quản lý thông tin nhà tài trợ"
+### SponsorManagement.jsx — `/sponsors` — tiêu đề "Quản lý thông tin nhà tài trợ" / "Danh sách nhà tài trợ"
 | Tên | Loại | Nhãn |
 |---|---|---|
 | txtKeyword | input text | Tên nhà tài trợ: |
 | btnSearch | button | Tìm kiếm |
-| tblSponsor | table | cột: TT, Mã nhà tài trợ, Tên nhà tài trợ, Email, Số điện thoại, Trạng thái, Xem chi tiết |
-| btnCancel | Link | Quay lại → / |
+| btnNewSponsor | button | + Thêm nhà tài trợ (chỉ hiện cho Organizer) → mở modal `NewSponsor` |
+| tblSponsor | table | cột: TT, Mã nhà tài trợ, Tên nhà tài trợ, Email, Số điện thoại, Trạng thái, Thao tác (Xem chi tiết, Sửa, Xóa) |
+| btnCancel | Link | Quay lại |
 
 - Click Tìm kiếm thì gọi `GET /api/sponsors?name=`. Rỗng: alert "Không tìm thấy nhà tài trợ".
 - **Không hiển thị Mã số thuế trong bảng.**
-- Click một dòng: lưu `sponsor` vào session, mở cửa sổ SponsorDetail (không đổi URL).
+- **Thêm nhà tài trợ (Module 1)**: Nút "+ Thêm nhà tài trợ" mở modal `NewSponsor`. Sau khi tạo mới thành công, nạp lại danh sách và mở ngay chi tiết NTT vừa tạo.
+- **Sửa nhà tài trợ (Module 1)**: Nút "Sửa" trên từng dòng mở modal `EditSponsor` để chỉnh sửa thông tin.
+- **Xóa nhà tài trợ (Module 1)**: Nút "Xóa" yêu cầu xác nhận xác thực, sau đó gọi `DELETE /api/sponsors/{id}`. Nếu NTT đã có hợp đồng tài trợ, hệ thống chặn xóa và báo lỗi `"Không thể xóa nhà tài trợ đã có hợp đồng tài trợ"`.
+- **Phân quyền Khách hàng (Module 2)**: Khi tài khoản `CUSTOMER` truy cập, giao diện hiển thị ở chế độ chỉ đọc: tiêu đề đổi thành "Danh sách nhà tài trợ", ẩn nút "+ Thêm nhà tài trợ", cột thao tác chỉ còn nút "Xem chi tiết" (ẩn Sửa, Xóa).
+- Click "Xem chi tiết" một dòng: lưu `sponsor` vào session, mở modal `SponsorDetail`.
 
 ### SponsorDetail.jsx — **modal trên `/sponsors`** — tiêu đề "Thông tin nhà tài trợ"
 `sponsorDetail` (dl, 2 cột):
@@ -126,9 +143,16 @@ src/
 | Tên | Loại | Nhãn |
 |---|---|---|
 | tblContract | table | tiêu đề "Danh sách hợp đồng đã ký"; cột: TT, Mã hợp đồng (barcode), Mùa giải, Giá trị, Ngày ký, Hiệu lực đến |
+| btnEditSponsor | button | Chỉnh sửa thông tin (chỉ hiện cho Organizer) → mở modal `EditSponsor` |
+| btnDeleteSponsor | button | Xóa nhà tài trợ (chỉ hiện cho Organizer, kiểm tra ràng buộc không có HĐ) |
 | btnCancel (id `sponsorDetail-btnCancel`) | button | Quay lại → đóng cửa sổ |
 
 - Khi mở trang thì gọi `GET /api/sponsors/{id}` (SponsorDAO.getSponsorInfo, kèm listContract đã ký). Không có hợp đồng thì hiện "Chưa có".
+- Chế độ `readOnly` cho vai trò `CUSTOMER`: ẩn các nút "Chỉnh sửa thông tin" và "Xóa nhà tài trợ".
+
+### EditSponsor.jsx — **modal trên `/sponsors` và `/sponsor-portal`** — tiêu đề "Chỉnh sửa nhà tài trợ"
+- Các trường: Tên nhà tài trợ, Mã số thuế (readonly), Lĩnh vực hoạt động, Địa chỉ trụ sở, Email liên hệ, Số điện thoại, Trạng thái (Đang hợp tác / Ngừng hợp tác).
+- Khi submit: gọi `PUT /api/sponsors/{id}`, xử lý kiểm tra định dạng và báo lỗi nếu có xung đột dữ liệu. Bấm "Lưu thay đổi" thành công thì cập nhật dữ liệu và đóng modal.
 
 ---
 
@@ -247,6 +271,7 @@ Mục **"Bảng thanh toán"**:
 |---|---|---|
 | tblPayment | table | TT, Mùa giải – Chặng ("2025 – C03"), Tay đua ("Trần Văn B (#50)"), Ngân hàng, Chủ tài khoản, Số tài khoản, Tiền thưởng |
 | lblTotalAmount | label | Tổng tiền: 172.000.000 VNĐ |
+| selectPaymentMethod | select | Phương thức thanh toán: `Chuyển khoản online` (mặc định) / `Trả thưởng trực tiếp` (Module 3) |
 | txtContent | input | Nội dung: |
 | btnPay | button | Thanh toán (disabled khi tblPayment rỗng) |
 | btnCancel | Link | Hủy |
@@ -260,16 +285,18 @@ Hành vi:
    - Chặng chưa có kết quả hoặc basePrize chưa có: alert "Chặng đua còn thiếu dữ liệu kết quả hoặc mức thưởng cơ sở", không hiện bảng.
    - Checkbox **bị khóa** khi kết quả `Đã trả` hoặc tiền thưởng = 0.
    - Kết quả đã nằm trong tblPayment thì checkbox hiện tích sẵn.
-4. **Tích một tay đua**: gọi `GET /api/drivers/{driverId}`, lấy tài khoản `isDefault = true` còn hoạt động, thêm một dòng vào `tblPayment`, cập nhật `lblTotalAmount`, lưu `invoice`.
-   - Không có tài khoản mặc định: alert "Thiếu thông tin nhận thưởng: <tên tay đua>" và bỏ tích.
+4. **Tích một tay đua**:
+   - Nếu `paymentMethod = "Chuyển khoản online"`: gọi `GET /api/drivers/{driverId}`, lấy tài khoản `isDefault = true` còn hoạt động, thêm một dòng vào `tblPayment`, cập nhật `lblTotalAmount`. Nếu không có tài khoản mặc định: alert "Thiếu thông tin nhận thưởng: <tên tay đua>" và bỏ tích.
+   - Nếu `paymentMethod = "Trả thưởng trực tiếp"` (Module 3): cho phép chọn mọi tay đua có tiền thưởng > 0 (kể cả chưa có tài khoản ngân hàng, thông tin tài khoản ghi "Tiền mặt / Trực tiếp").
    - **Bỏ tích**: xóa dòng đó khỏi tblPayment, cập nhật tổng tiền.
 5. **Đổi sang mùa giải hoặc chặng khác**: `tblPayment` **giữ nguyên**, nên có thể trả nhiều chặng, nhiều mùa trong một hóa đơn.
-6. **Click Thanh toán**: `confirm("Bạn xác nhận thanh toán?")`, đồng ý thì gọi `POST /api/invoices` với organizer, `paymentMethod = "Chuyển khoản online"` và các id trong tblPayment.
-   - Thành công: alert "Thanh toán thành công". Click OK thì lưu `invoice` (bản đã lưu, kèm mùa giải, chặng, tay đua) → mở cửa sổ Invoice (không đổi URL); bảng kết quả chặng đang xem được nạp lại để hiện "Đã trả".
+6. **Click Thanh toán**: `confirm("Bạn xác nhận thanh toán?")`, đồng ý thì gọi `POST /api/invoices` với organizer, `paymentMethod` đã chọn và các id trong tblPayment.
+   - **Nếu Chuyển khoản online**: alert "Thanh toán thành công". Click OK thì lưu `invoice` vào session → **mở cửa sổ nổi Invoice** (không đổi URL); bảng kết quả chặng đang xem được nạp lại để hiện "Đã trả".
+   - **Nếu Trả thưởng trực tiếp (Module 3)**: alert "Thanh toán thành công qua hình thức Trả thưởng trực tiếp!". Click OK thì **KHÔNG mở cửa sổ Invoice**, làm sạch bảng thanh toán, làm mới bảng kết quả để hiện "Đã trả".
    - Thất bại: alert "Thanh toán không thành công: <message>", mọi kết quả giữ `Chưa trả`, bảng thanh toán giữ nguyên để bấm Thanh toán lại ("Thử lại").
 7. **Click Hủy**: xóa `invoice`, `season`, `race` khỏi session rồi về `/`.
 
-### Invoice.jsx — **modal trên `/rewards/payment`** — tiêu đề "Hóa đơn trả thưởng"
+### Invoice.jsx — **modal trên `/rewards/payment` và `/driver-portal`** — tiêu đề "Hóa đơn trả thưởng"
 Thông tin (dl):
 | Nhãn | Giá trị |
 |---|---|
@@ -288,7 +315,52 @@ Thông tin (dl):
 | (Gửi lại email) | button | Gửi lại hóa đơn đến email của từng tay đua (cho trường hợp gửi email thất bại - ngoại lệ 21.3) |
 | (X / Tiếp tục trả thưởng) | button | Đóng hóa đơn, ở lại trang trả thưởng với bảng thanh toán trống |
 
-- Không gọi backend, đọc từ `invoice` trong session.
+- Hỗ trợ 2 chế độ nạp dữ liệu:
+  1. Đọc từ `invoice` trong session (dùng sau khi Ban tổ chức thanh toán trên `/rewards/payment`).
+  2. Tải qua API `GET /api/invoices/{id}` khi nhận prop `invoiceId` (dùng khi Tay đua bấm "Xem hóa đơn" từ `/driver-portal`).
+
+---
+
+## 4. Cổng thông tin Nhà tài trợ (SponsorPortal.jsx) — `/sponsor-portal` — tiêu đề "Trang chủ Nhà tài trợ"
+Dành riêng cho tài khoản Nhà tài trợ (`role = SPONSOR`). Bố cục `layout-portal`: cột trái 320px (sticky) + nội dung bên phải; dưới 1080px xếp thành 1 cột.
+- **Cột trái, thẻ hồ sơ (`profile-card`)**: avatar chữ cái đầu, tên, mã NTT (chip), trạng thái hợp tác (badge); danh sách Mã số thuế, Lĩnh vực, Email, Số điện thoại, Địa chỉ (mỗi dòng có icon); nút "Cập nhật thông tin liên hệ" mở modal `EditSponsor`.
+- **Bên phải, thẻ thống kê (`stat-card`, 4 cột)**: Tổng số hợp đồng, Hợp đồng đã ký, Hợp đồng chờ ký, Tổng giá trị tài trợ.
+- **Bảng hợp đồng**: bộ lọc dạng `segmented` Tất cả / Đã ký / Chờ ký; cột TT, Mã hợp đồng (barcode), Mùa giải, Giá trị, Ngày lập, Ngày ký, Thời hạn hiệu lực, Trạng thái (badge), Thao tác ("Xem chi tiết"). Đại diện hai bên chỉ hiện trong modal chi tiết, để bảng không tràn ngang.
+- **Modal chi tiết hợp đồng**:
+  - Thông tin chung: Mã barcode, Trạng thái, Ngày lập, Ngày ký, Thời hạn hiệu lực, Giá trị, Đại diện hai bên.
+  - Bảng Điều khoản: TT, Tiêu đề điều khoản, Nội dung chi tiết, **Xử lý vi phạm (punishment)**, Ghi chú.
+  - Bảng Quyền lợi: TT, Tiêu đề quyền lợi, Mô tả, Số lượng / Giá trị, Ghi chú.
+
+---
+
+## 5. Cổng thông tin Tay đua (DriverPortal.jsx) — `/driver-portal` — tiêu đề "Trang chủ Tay đua"
+Dành riêng cho tài khoản Tay đua (`role = DRIVER`). Tay đua **chỉ xem và sửa dữ liệu của chính mình** (id lấy từ session `driver`). Bố cục `layout-portal` như trang Nhà tài trợ.
+- **Cột trái, thẻ hồ sơ**: avatar, họ tên, `#racingNumber`, tên đăng nhập (chip); Ngày sinh, Quốc tịch, Số xe; nút `btnEditDriver` "Chỉnh sửa thông tin" mở modal `EditDriver`.
+- **Cột trái, thẻ `default-account`**: tài khoản nhận thưởng mặc định (số TK, ngân hàng, chủ TK); chưa có thì thẻ đỏ nhắc thêm tài khoản.
+- **Bên phải, thẻ thống kê (4 cột)**: Tổng chặng đã đua, Đã nhận (số chặng + tiền), Chờ chi trả (số chặng + tiền), Tổng tiền thưởng.
+- **Bảng tiền thưởng (`tblDriverReward`)**: TT, Mùa giải, Chặng đua (kèm địa điểm), Ngày thi đấu, Thứ hạng, Vòng, Điểm, Tiền thưởng, Trạng thái ("Đã trả" / "Chưa trả"), Hóa đơn. Kết quả "Đã trả" có nút "Xem HDxxx" mở modal `Invoice` với `readOnly` (ẩn "Gửi lại email" và "Tiếp tục trả thưởng").
+- **Bảng tài khoản ngân hàng (`tblBankAccount`)**: nút `btnNewBankAccount` "Thêm tài khoản"; cột TT, Ngân hàng, Số tài khoản, Chủ tài khoản, Trạng thái (badge "Mặc định" + trạng thái), Thao tác: "Đặt mặc định" (chỉ tài khoản chưa mặc định, gọi PUT với `isDefault: true`), "Sửa" (modal `BankAccountForm`), "Xóa" (confirm; **khóa với tài khoản mặc định**).
+- Sau mỗi lần sửa thông tin / tài khoản: backend trả Driver kèm `listBankAccount`, trang cập nhật state và session `driver`, `user`.
+
+### EditDriver.jsx — **modal trên `/driver-portal`** — tiêu đề "Chỉnh sửa thông tin cá nhân"
+| Tên | Loại | Nhãn |
+|---|---|---|
+| txtFullName | input | Họ và tên |
+| txtDateOfBirth | input date | Ngày sinh |
+| txtNationality | input | Quốc tịch |
+| txtUsername | input (disabled) | Tên đăng nhập |
+| txtRacingNumber | input (disabled) | Số xe (Do Ban tổ chức cấp) |
+- Lưu thay đổi thì gọi `PUT /api/drivers/{id}`; thành công alert "Đã cập nhật thông tin cá nhân.", lỗi thì alert message và giữ form.
+
+### BankAccountForm.jsx — **modal trên `/driver-portal`** — tiêu đề "Thêm tài khoản ngân hàng" / "Sửa tài khoản ngân hàng"
+| Tên | Loại | Nhãn |
+|---|---|---|
+| txtBank | select (từ `GET /api/drivers/banks`) | Ngân hàng |
+| txtAccountNumber | input (6–19 chữ số) | Số tài khoản |
+| txtAccountHolder | input (backend lưu in hoa) | Chủ tài khoản |
+| chkDefault | checkbox | Đặt làm tài khoản nhận thưởng mặc định |
+- `chkDefault` bị khóa và tích sẵn khi đang sửa tài khoản mặc định, hoặc khi tay đua chưa có tài khoản mặc định (`forceDefault`).
+- Thêm: `POST /api/drivers/{id}/bank-accounts`; Sửa: `PUT /api/drivers/{id}/bank-accounts/{accountId}`. Lỗi (sai định dạng, trùng ngân hàng + số TK, bỏ mặc định) thì alert message của backend.
 
 ---
 

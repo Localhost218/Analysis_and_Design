@@ -22,6 +22,6 @@ public class Driver extends Member {
     private Integer racingNumber;
 
     @OneToMany
-    @JoinColumn(name = "tblDriverMemberid")
+    @JoinColumn(name = "tblDriverMemberid", nullable = false)
     private List<BankAccount> listBankAccount = new ArrayList<>();
 }

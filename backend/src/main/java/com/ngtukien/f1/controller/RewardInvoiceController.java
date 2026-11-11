@@ -1,6 +1,6 @@
 package com.ngtukien.f1.controller;
 
-import com.ngtukien.f1.dao.PaymentException;
+import com.ngtukien.f1.exception.PaymentException;
 import com.ngtukien.f1.dao.RewardInvoiceDAO;
 import com.ngtukien.f1.model.RewardInvoice;
 import org.springframework.http.HttpStatus;
@@ -24,4 +24,14 @@ public class RewardInvoiceController {
             return ApiError.of(HttpStatus.CONFLICT, "Thanh toán không thành công: " + e.getMessage());
         }
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Object> getInvoice(@PathVariable int id) {
+        RewardInvoice invoice = rewardInvoiceDAO.getInvoiceById(id);
+        if (invoice == null) {
+            return ApiError.of(HttpStatus.NOT_FOUND, "Không tìm thấy hóa đơn");
+        }
+        return ResponseEntity.ok(invoice);
+    }
 }
+

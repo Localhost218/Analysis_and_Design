@@ -8,8 +8,9 @@ import { formatDateTime, formatMoney, seasonRaceLabel } from '../utils/format.js
  * Giao diện Invoice: cửa sổ nổi trên RewardPayment sau khi thanh toán thành công (không có route riêng).
  * Không gọi backend, hiển thị từ invoice (RewardInvoice đã lưu, "lấy từ session").
  * onClose: đóng hóa đơn, ở lại trang trả thưởng; onBack (btnBack): quay lại OrganizerHome.
+ * readOnly: tay đua xem hóa đơn, ẩn Gửi lại email và Tiếp tục trả thưởng.
  */
-export default function Invoice({ invoice, onClose, onBack }) {
+export default function Invoice({ invoice, onClose, onBack, readOnly = false }) {
   const dialog = useDialog();
 
   const handleResendEmail = async () => {
@@ -26,8 +27,10 @@ export default function Invoice({ invoice, onClose, onBack }) {
       onClose={onClose}
       footer={<>
         <button type="button" className="btn" onClick={() => window.print()}><Icon name="print" />In hóa đơn</button>
-        <button type="button" className="btn" onClick={handleResendEmail}><Icon name="mail" />Gửi lại email</button>
-        <button type="button" className="btn" onClick={onClose}>Tiếp tục trả thưởng</button>
+        {!readOnly && <>
+          <button type="button" className="btn" onClick={handleResendEmail}><Icon name="mail" />Gửi lại email</button>
+          <button type="button" className="btn" onClick={onClose}>Tiếp tục trả thưởng</button>
+        </>}
         <button id="btnBack" type="button" className="btn btn-dark" onClick={onBack}><Icon name="home" />Quay lại trang chủ</button>
       </>}
     >

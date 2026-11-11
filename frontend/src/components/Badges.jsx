@@ -1,5 +1,8 @@
 const TONES = {
   'Đang hợp tác': 'success',
+  'Hoạt động': 'success',
+  'Tạm khóa': 'danger',
+  'Mặc định': 'info',
   'Ngừng hợp tác': 'danger',
   'Đã ký': 'success',
   'Chờ ký': 'warning',

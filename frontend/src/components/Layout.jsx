@@ -12,7 +12,18 @@ export function initials(name = '') {
 export function AppShell({ children }) {
   const navigate = useNavigate();
   const dialog = useDialog();
+  const [role] = useSession('role', 'ORGANIZER');
+  const [user] = useSession('user');
   const [organizer] = useSession('organizer');
+  const [sponsor] = useSession('sponsor');
+  const [driver] = useSession('driver');
+
+  const currentUser = user || organizer || sponsor || driver;
+  const displayName = currentUser?.fullName || currentUser?.name || currentUser?.username || 'Thành viên';
+  const roleLabel = role === 'ORGANIZER' ? (currentUser?.role || 'Ban tổ chức')
+    : role === 'SPONSOR' ? 'Nhà tài trợ'
+    : role === 'DRIVER' ? 'Tay đua'
+    : 'Khách hàng';
 
   // "Giới thiệu", "BXH" chỉ có trên header, chưa có trang riêng
   const comingSoon = (name) => (e) => {
@@ -25,23 +36,27 @@ export function AppShell({ children }) {
     navigate('/login', { replace: true });
   };
 
+  const homeRoute = role === 'SPONSOR' ? '/sponsor-portal'
+    : role === 'DRIVER' ? '/driver-portal'
+    : '/';
+
   return (
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <Link to="/" className="brand">
+          <Link to={homeRoute} className="brand">
             <span className="brand-mark">F1</span>
             <span className="brand-text"><b>Mùa giải F1</b><small>Tài trợ & Trả thưởng</small></span>
           </Link>
           <nav className="nav">
-            <NavLink to="/"><Icon name="home" /><span>Trang chủ</span></NavLink>
+            <NavLink to={homeRoute} end><Icon name="home" /><span>Trang chủ</span></NavLink>
             <a href="#gioi-thieu" onClick={comingSoon('Giới thiệu')}><Icon name="info" /><span>Giới thiệu</span></a>
             <a href="#bxh" onClick={comingSoon('BXH')}><Icon name="trophy" /><span>BXH</span></a>
           </nav>
           <div className="user">
             <div className="user-chip">
-              <span className="avatar">{initials(organizer?.fullName)}</span>
-              <span className="user-meta"><b>{organizer?.fullName}</b><small>{organizer?.role}</small></span>
+              <span className="avatar">{initials(displayName)}</span>
+              <span className="user-meta"><b>{displayName}</b><small>{roleLabel}</small></span>
             </div>
             <button id="btnLogout" type="button" className="icon-btn" title="Đăng xuất" onClick={btnLogout}>
               <Icon name="logout" />

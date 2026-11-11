@@ -4,8 +4,9 @@ import Modal from './Modal.jsx';
 /**
  * Khung chung cho 4 giao diện NewSponsor, NewSeason, NewTerm, NewBenefit:
  * hiện dạng cửa sổ nổi trên ContractSigning, có nút Hủy (btnCancel) và Thêm (btnAdd).
+ * Các form sửa (EditSponsor, EditDriver, BankAccountForm) dùng lại khung này, đổi chữ nút bằng submitText.
  */
-export default function FormModal({ prefix, title, subtitle, icon, onClose, onSubmit, submitting, children }) {
+export default function FormModal({ prefix, title, subtitle, icon, onClose, onSubmit, submitting, submitText, children }) {
   return (
     <Modal
       title={title}
@@ -16,7 +17,7 @@ export default function FormModal({ prefix, title, subtitle, icon, onClose, onSu
       footer={<>
         <button id={`${prefix}-btnCancel`} name="btnCancel" type="button" className="btn" onClick={onClose}>Hủy</button>
         <button id={`${prefix}-btnAdd`} name="btnAdd" type="submit" className="btn btn-primary" disabled={submitting}>
-          <Icon name="plus" />{submitting ? 'Đang lưu...' : 'Thêm'}
+          <Icon name={submitText ? 'check' : 'plus'} />{submitting ? 'Đang lưu...' : (submitText || 'Thêm')}
         </button>
       </>}
     >
