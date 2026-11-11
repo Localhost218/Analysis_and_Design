@@ -18,8 +18,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    networks:
-      - f1-network
 
   backend:
     build: ./backend
@@ -34,31 +32,23 @@ services:
     depends_on:
       database:
         condition: service_healthy
-    networks:
-      - f1-network
 
   frontend:
     build: ./frontend
     container_name: f1-frontend
     restart: unless-stopped
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
     ports:
       - "3000:80"
     depends_on:
       - backend
-    networks:
-      - f1-network
 
   cloudflare:
     image: cloudflare/cloudflared:latest
     container_name: f1-cloudflare
     restart: unless-stopped
+    network_mode: host
     command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
     depends_on:
       - frontend
-    networks:
-      - f1-network
-
-networks:
-  f1-network:
-    name: f1-network
-    driver: bridge

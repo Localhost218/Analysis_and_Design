@@ -84,4 +84,36 @@ class ContractDAOTest {
         c.setListContractTerm(List.of(c.getListContractTerm().get(0), dup));
         assertFalse(contractDAO.createContract(c));
     }
+
+    @Test
+    void createWithoutTerms() {
+        Contract c = redBlueContract();
+        c.setListContractTerm(List.of());
+        assertFalse(contractDAO.createContract(c));
+    }
+
+    @Test
+    void createWithoutBenefits() {
+        Contract c = redBlueContract();
+        c.setListContractBenefit(List.of());
+        assertFalse(contractDAO.createContract(c));
+    }
+
+    @Test
+    void createWithStoppedSponsor() {
+        // Oracle (id=6) có trạng thái "Ngừng hợp tác" -> không được phép ký hợp đồng
+        Contract c = redBlueContract();
+        c.setSponsor(withId(new Sponsor(), 6));
+        assertFalse(contractDAO.createContract(c));
+    }
+
+    @Test
+    void createDuplicateBenefit() {
+        Contract c = redBlueContract();
+        ContractBenefit dup = new ContractBenefit();
+        dup.setBenefit(withId(new Benefit(), 2));
+        c.setListContractBenefit(List.of(c.getListContractBenefit().get(0), dup));
+        assertFalse(contractDAO.createContract(c));
+    }
 }
+

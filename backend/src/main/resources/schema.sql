@@ -94,6 +94,9 @@ CREATE TABLE IF NOT EXISTS tblContractTerm (
     tblContractid INTEGER NOT NULL REFERENCES tblContract (id)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_contract_term
+ON tblContractTerm (tblContractid, tblTermid);
+
 CREATE TABLE IF NOT EXISTS tblBenefit (
     id          SERIAL PRIMARY KEY,
     title       VARCHAR(255) NOT NULL,
@@ -110,6 +113,9 @@ CREATE TABLE IF NOT EXISTS tblContractBenefit (
     tblBenefitid  INTEGER NOT NULL REFERENCES tblBenefit (id),
     tblContractid INTEGER NOT NULL REFERENCES tblContract (id)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_contract_benefit
+ON tblContractBenefit (tblContractid, tblBenefitid);
 
 CREATE TABLE IF NOT EXISTS tblRegisteredDriver (
     id                SERIAL PRIMARY KEY,
@@ -157,3 +163,9 @@ CREATE TABLE IF NOT EXISTS tblBankAccount (
     tblDriverMemberid INTEGER NOT NULL REFERENCES tblDriver (tblMemberid),
     tblBankid         INTEGER NOT NULL REFERENCES tblBank (id)
 );
+
+-- Ràng buộc: Mỗi tay đua có thể có nhiều tài khoản, nhưng tối đa CHỈ 1 tài khoản là mặc định (isDefault = TRUE)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_driver_default_bank_account
+ON tblBankAccount (tblDriverMemberid)
+WHERE isDefault = TRUE;
+

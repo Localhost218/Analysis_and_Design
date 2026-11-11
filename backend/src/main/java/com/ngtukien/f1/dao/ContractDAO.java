@@ -30,10 +30,21 @@ public class ContractDAO extends DAO {
         Season season = find(Season.class, contract.getSeason().getId());
         Organizer organizer = find(Organizer.class, contract.getOrganizer().getId());
         if (sponsor == null || season == null || organizer == null
+                || !"Đang hợp tác".equals(sponsor.getStatus())
                 || contract.getValue() == null || contract.getValue() <= 0
                 || contract.getEffectiveFrom() == null || contract.getEffectiveTo() == null
                 || !contract.getEffectiveFrom().isBefore(contract.getEffectiveTo())
                 || isBlank(contract.getSponsorRepresentative()) || isBlank(contract.getOrganizerRepresentative())) {
+            return false;
+        }
+
+        // Bắt buộc hợp đồng phải có ít nhất một điều khoản
+        if (contract.getListContractTerm() == null || contract.getListContractTerm().isEmpty()) {
+            return false;
+        }
+
+        // Bắt buộc hợp đồng phải có ít nhất một quyền lợi
+        if (contract.getListContractBenefit() == null || contract.getListContractBenefit().isEmpty()) {
             return false;
         }
 
@@ -49,6 +60,9 @@ public class ContractDAO extends DAO {
             row.setNotes(trimToNull(ct.getNotes()));
             terms.add(row);
         }
+        if (terms.isEmpty()) {
+            return false;
+        }
 
         List<ContractBenefit> benefits = new ArrayList<>();
         Set<Integer> benefitIds = new HashSet<>();
@@ -63,6 +77,9 @@ public class ContractDAO extends DAO {
             row.setUnit(trimToNull(cb.getUnit()));
             row.setNotes(trimToNull(cb.getNotes()));
             benefits.add(row);
+        }
+        if (benefits.isEmpty()) {
+            return false;
         }
 
         contract.setId(null);

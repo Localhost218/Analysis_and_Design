@@ -64,10 +64,25 @@ class RewardInvoiceDAOTest {
 
     @Test
     void missingDefaultBankAccount() {
+        // Lê Minh Cường có 2 tài khoản ngân hàng nhưng cả 2 đều là FALSE (không có tài khoản mặc định)
         PaymentException e = assertThrows(PaymentException.class,
                 () -> rewardInvoiceDAO.createRewardInvoice(invoiceOf(1, 8)));
         assertEquals("Thiếu thông tin nhận thưởng: Lê Minh Cường", e.getMessage());
     }
+
+    @Test
+    void multipleBankAccountsOnlyDefaultUsed() {
+        // Trần Văn B có 3 tài khoản ngân hàng (1 VCB mặc định, 2 tài khoản phụ TCB & MB)
+        // Hệ thống kiểm tra đúng 1 tài khoản mặc định và thanh toán thành công
+        RegisteredReceipt r = em.find(RegisteredReceipt.class, 1);
+        com.ngtukien.f1.model.Driver driver = r.getRegisteredDriver().getDriver();
+        assertEquals(3, driver.getListBankAccount().size());
+        assertEquals(1, driver.getListBankAccount().stream().filter(a -> Boolean.TRUE.equals(a.getIsDefault())).count());
+
+        RewardInvoice inv = rewardInvoiceDAO.createRewardInvoice(invoiceOf(1));
+        assertEquals("Thanh toán thành công", inv.getStatus());
+    }
+
 
     @Test
     void zeroReward() {

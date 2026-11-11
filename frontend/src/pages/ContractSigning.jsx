@@ -79,6 +79,12 @@ export default function ContractSigning() {
     else if (contract.effectiveFrom >= contract.effectiveTo) errors.push('Ngày hết hiệu lực phải sau ngày bắt đầu');
     if (!contract.sponsorRepresentative.trim()) errors.push('Chưa nhập người đại diện nhà tài trợ');
     if (!contract.organizerRepresentative.trim()) errors.push('Chưa nhập người đại diện Ban tổ chức');
+    if (!contract.listContractTerm || contract.listContractTerm.length === 0) {
+      errors.push('Hợp đồng phải có ít nhất một điều khoản');
+    }
+    if (!contract.listContractBenefit || contract.listContractBenefit.length === 0) {
+      errors.push('Hợp đồng phải có ít nhất một quyền lợi của nhà tài trợ');
+    }
     contract.listContractBenefit.forEach((cb) => {
       if (cb.value !== '' && (!Number.isInteger(Number(cb.value)) || Number(cb.value) < 0)) {
         errors.push(`Giá trị quyền lợi "${cb.benefit.title}" không hợp lệ`);
